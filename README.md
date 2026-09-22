@@ -40,8 +40,17 @@ make dev-logs    # logs
    exécuté dans le conteneur backend (le mot de passe est haché en bcrypt) :
 
 ```bash
+# développement
 docker exec -it backend-inventory-it npx tsx scripts/add-user.ts admin votre-mdp
+
+# production (l'image est compilée, sans TypeScript runtime)
+docker exec -it backend-inventory-it-prod node dist/scripts/add-user.js admin votre-mdp
 ```
+
+> Le script `backend/scripts/add-user.ts` est volontairement **hors du dépôt**
+> (gitignoré) : il doit exister sur la machine/vps pour être inclus dans
+> l'image de production (`COPY . .` au build) et rester utilisable via
+> `docker exec`. Ne pas le supprimer localement.
 
 ## Développement sans Docker
 

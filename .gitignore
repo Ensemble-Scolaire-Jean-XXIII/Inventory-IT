@@ -130,3 +130,7 @@ dump.sql
 nginx/
 certbot/
 instructions.md
+
+# Admin provisioning script (kept out of the repo so it also stays on servers,
+# but kept locally because the prod image build bundles it via COPY)
+backend/scripts/
