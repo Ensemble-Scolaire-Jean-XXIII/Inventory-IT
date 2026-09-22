@@ -10,34 +10,10 @@ export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
 
-  const [email, setEmail] = useState(user?.email || "");
-  const [isSavingEmail, setIsSavingEmail] = useState(false);
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingPassword, setIsSavingPassword] = useState(false);
-
-  const handleSaveEmail = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!email.trim()) {
-        showToast("L'adresse e-mail est requise.", "error");
-        return;
-      }
-      setIsSavingEmail(true);
-      try {
-        await authService.updateProfile(email.trim());
-        await refreshUser();
-        showToast("Adresse e-mail mise à jour.", "success");
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Erreur.", "error");
-      } finally {
-        setIsSavingEmail(false);
-      }
-    },
-    [email, refreshUser, showToast],
-  );
 
   const handleSavePassword = useCallback(
     async (e: React.FormEvent) => {
@@ -74,18 +50,13 @@ export default function ProfilePage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Profil</h1>
         <p className="text-sm text-(--text-muted)">
-          {user?.first_name || user?.last_name
-            ? `Connecté en tant que ${[user?.first_name, user?.last_name].filter(Boolean).join(" ")} — ${user?.email}.`
-            : `Connecté en tant que ${user?.email}.`}
+          Gérez vos informations personnelles et votre mot de passe.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0 gap-4">
-        <form
-          onSubmit={handleSaveEmail}
-          className="crm-card flex flex-col gap-3 h-full"
-        >
-          <div className="flex items-center gap-2">
+        <div className="crm-card flex flex-col h-full">
+          <div className="flex items-center gap-2 p-4 border-b border-(--border-color)">
             <Image
               src="/icons/profile.webp"
               alt=""
@@ -95,35 +66,42 @@ export default function ProfilePage() {
               unoptimized
             />
             <h2 className="text-base font-bold tracking-tight">
-              Adresse e-mail
+              Informations
             </h2>
           </div>
-          <div>
-            <label className="block text-xs text-(--text-muted) mb-1">
-              E-mail
-            </label>
-            <input
-              type="email"
-              className="crm-input"
-              placeholder="prenom.nom@jean23.org"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <div className="flex-1 flex flex-col justify-evenly px-4 py-6 gap-3">
+            <div className="text-center">
+              <p className="text-xs text-(--text-muted) uppercase tracking-wider mb-0.5">
+                Prénom
+              </p>
+              <p className="text-lg font-medium text-(--text-main)">
+                {user?.first_name || "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-(--text-muted) uppercase tracking-wider mb-0.5">
+                Nom
+              </p>
+              <p className="text-lg font-medium text-(--text-main)">
+                {user?.last_name || "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-(--text-muted) uppercase tracking-wider mb-0.5">
+                Adresse e-mail
+              </p>
+              <p className="text-lg font-medium text-(--text-main) truncate max-w-xs mx-auto">
+                {user?.email || "—"}
+              </p>
+            </div>
           </div>
-          <button
-            type="submit"
-            className="crm-btn-primary self-start mt-auto"
-            disabled={isSavingEmail}
-          >
-            {isSavingEmail ? "Enregistrement…" : "Enregistrer l'e-mail"}
-          </button>
-        </form>
+        </div>
 
         <form
           onSubmit={handleSavePassword}
           className="crm-card flex flex-col gap-3 h-full"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-4 border-b border-(--border-color)">
             <Image
               src="/icons/passwordReset.webp"
               alt=""
@@ -134,49 +112,53 @@ export default function ProfilePage() {
             />
             <h2 className="text-base font-bold tracking-tight">Mot de passe</h2>
           </div>
-          <div>
-            <label className="block text-xs text-(--text-muted) mb-1">
-              Mot de passe actuel
-            </label>
-            <input
-              type="password"
-              className="crm-input"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-            />
+          <div className="flex-1 flex flex-col justify-center px-4 space-y-4">
+            <div>
+              <label className="block text-xs text-(--text-muted) mb-1.5">
+                Mot de passe actuel
+              </label>
+              <input
+                type="password"
+                className="crm-input"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-(--text-muted) mb-1.5">
+                Nouveau mot de passe
+              </label>
+              <input
+                type="password"
+                className="crm-input"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-(--text-muted) mb-1.5">
+                Confirmer le nouveau mot de passe
+              </label>
+              <input
+                type="password"
+                className="crm-input"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="pt-2 text-right">
+              <button
+                type="submit"
+                className="crm-btn-primary w-full sm:w-auto"
+                disabled={isSavingPassword}
+              >
+                {isSavingPassword ? "Modification…" : "Modifier le mot de passe"}
+              </button>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs text-(--text-muted) mb-1">
-              Nouveau mot de passe
-            </label>
-            <input
-              type="password"
-              className="crm-input"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-(--text-muted) mb-1">
-              Confirmer le nouveau mot de passe
-            </label>
-            <input
-              type="password"
-              className="crm-input"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
-          <button
-            type="submit"
-            className="crm-btn-primary self-start mt-auto"
-            disabled={isSavingPassword}
-          >
-            {isSavingPassword ? "Modification…" : "Modifier le mot de passe"}
-          </button>
         </form>
       </div>
     </div>
