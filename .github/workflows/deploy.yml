@@ -1,0 +1,24 @@
+name: CD - Deploy Inventory-IT Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_prod:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code and rebuild production
+        run: |
+          cd /home/jeanxxiii-apps/inventory-it
+
+          git pull origin main
+
+          make prod-down
+
+          docker compose -f docker-compose.prod.yml build --no-cache
+
+          make prod-up
+
+          docker image prune -f

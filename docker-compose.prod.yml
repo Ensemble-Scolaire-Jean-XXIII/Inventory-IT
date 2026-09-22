@@ -1,0 +1,71 @@
+services:
+  db-inventory-it:
+    container_name: db-inventory-it-prod
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Europe/Paris
+    volumes:
+      - db_data_prod:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  backend-inventory-it:
+    container_name: backend-inventory-it-prod
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      DB_HOST: db-inventory-it-prod
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+      JWT_SECRET: ${JWT_SECRET}
+      TZ: Europe/Paris
+      FRONTEND_URL: ${FRONTEND_URL}
+    depends_on:
+      - db-inventory-it
+    networks:
+      - internal
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  frontend-inventory-it:
+    container_name: frontend-inventory-it-prod
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - backend-inventory-it
+    networks:
+      - internal
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+volumes:
+  db_data_prod:
+
+networks:
+  internal:
+    internal: true
+  proxy-net:
+    external: true
