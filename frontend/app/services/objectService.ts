@@ -9,7 +9,7 @@ export const objectService = {
   getAll: async (): Promise<InventoryObject[]> => {
     return api.get("/objects");
   },
-  create: async (data: CreateObjectPayload): Promise<{ id: number }> => {
+  create: async (data: CreateObjectPayload): Promise<{ id: number; count: number }> => {
     return api.post("/objects", data);
   },
   update: async (

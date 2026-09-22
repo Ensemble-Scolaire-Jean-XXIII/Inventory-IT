@@ -51,9 +51,9 @@ export function useInventory() {
   const addObject = useCallback(
     async (payload: CreateObjectPayload) => {
       try {
-        await objectService.create(payload);
+        const res = await objectService.create(payload);
         await load();
-        return { success: true };
+        return { success: true, count: res.count };
       } catch (err) {
         return {
           success: false,

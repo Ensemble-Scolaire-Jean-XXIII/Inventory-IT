@@ -36,7 +36,7 @@ export const getObjectsByType = async (
 
 export const createObject = async (
   payload: CreateObjectPayload,
-): Promise<number> => {
+): Promise<{ id: number; count: number }> => {
   try {
     const fields = await getFieldsByTypeId(payload.object_type_id);
     if (fields.length === 0) {
@@ -47,16 +47,32 @@ export const createObject = async (
     }
 
     const data = await cleanData(fields, payload.data || {});
+    const count = normalizeCount(payload.count);
+
+    const name = payload.name.trim();
+    const values: string[] = [];
+    const params: any[] = [];
+    for (let i = 0; i < count; i++) {
+      values.push("(?, ?, ?)");
+      params.push(payload.object_type_id, name, JSON.stringify(data));
+    }
 
     const [result]: any = await pool.query(
-      "INSERT INTO objects (object_type_id, name, data) VALUES (?, ?, ?)",
-      [payload.object_type_id, payload.name.trim(), JSON.stringify(data)],
+      `INSERT INTO objects (object_type_id, name, data) VALUES ${values.join(", ")}`,
+      params,
     );
-    return result.insertId;
+    return { id: result.insertId, count };
   } catch (error: any) {
     if (error instanceof AppError) throw error;
     throw handleDatabaseError(error);
   }
+};
+
+const normalizeCount = (value: number | undefined): number => {
+  if (value === undefined) return 1;
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(Math.max(n, 1), 100);
 };
 
 export const updateObject = async (

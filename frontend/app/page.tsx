@@ -64,7 +64,11 @@ export default function HomePage() {
   const handleAdd = async (payload: CreateObjectPayload) => {
     const res = await inventory.addObject(payload);
     if (res.success) {
-      showToast("Objet ajouté.", "success");
+      const count = res.count || 1;
+      showToast(
+        count > 1 ? `${count} objets ajoutés.` : "Objet ajouté.",
+        "success",
+      );
       return true;
     }
     showToast(res.error || "Erreur à l'ajout.", "error");

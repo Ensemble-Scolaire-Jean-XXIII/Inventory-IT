@@ -61,6 +61,7 @@ export interface CreateObjectPayload {
   object_type_id: number;
   name: string;
   data: Record<string, unknown>;
+  count?: number;
 }
 
 export interface UpdateObjectPayload {

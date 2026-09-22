@@ -28,18 +28,20 @@ router.post("/", async (req, res, next) => {
       object_type_id?: number;
       name?: string;
       data?: Record<string, unknown>;
+      count?: number;
     };
     if (!body.object_type_id || !body.name?.trim()) {
       return res
         .status(400)
         .json({ error: "Le type et le nom de l'objet sont requis." });
     }
-    const id = await objectService.createObject({
+    const result = await objectService.createObject({
       object_type_id: Number(body.object_type_id),
       name: body.name.trim(),
       data: body.data,
+      count: body.count,
     });
-    res.status(201).json({ id });
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

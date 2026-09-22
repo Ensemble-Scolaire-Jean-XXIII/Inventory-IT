@@ -12,11 +12,13 @@ interface AddObjectFormProps {
 export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
   const [name, setName] = useState("");
   const [values, setValues] = useState<Record<string, unknown>>({});
+  const [count, setCount] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setName("");
     setValues({});
+    setCount(1);
   }, [type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,11 +34,13 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
       object_type_id: type.id,
       name: name.trim(),
       data,
+      count,
     });
     setIsSubmitting(false);
     if (ok) {
       setName("");
       setValues({});
+      setCount(1);
     }
   };
 
@@ -56,6 +60,21 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Nom de l'objet"
           required
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs text-(--text-muted) mb-1">
+          Quantité
+        </label>
+        <input
+          type="number"
+          className="crm-input"
+          value={count}
+          onChange={(e) => setCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+          min="1"
+          max="100"
+          placeholder="1"
         />
       </div>
 
