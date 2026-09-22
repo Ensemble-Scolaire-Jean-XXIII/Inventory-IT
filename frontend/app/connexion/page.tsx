@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -15,20 +15,20 @@ export default function LoginPage() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       setError("");
-      if (!username.trim() || !password) {
-        setError("Renseigne un identifiant et un mot de passe.");
+      if (!email.trim() || !password) {
+        setError("Renseigne un e-mail et un mot de passe.");
         return;
       }
       setIsSubmitting(true);
       try {
-        await login(username.trim(), password);
+        await login(email.trim(), password);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de connexion");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [username, password, login],
+    [email, password, login],
   );
 
   return (
@@ -56,13 +56,14 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className="block text-xs text-(--text-muted) mb-1">
-              Identifiant
+              E-mail
             </label>
             <input
-              type="text"
+              type="email"
               className="crm-input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              placeholder="prenom.nom@jean23.org"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               autoFocus
             />
           </div>

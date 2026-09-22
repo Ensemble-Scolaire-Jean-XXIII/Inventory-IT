@@ -3,7 +3,6 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 export interface AuthPayload extends JwtPayload {
   id: string;
-  username: string;
 }
 
 export const authenticate = (

@@ -33,8 +33,9 @@ flowchart LR
 erDiagram
     users {
         varchar id PK
-        varchar username UK
-        varchar email
+        varchar email UK
+        varchar first_name
+        varchar last_name
         varchar password_hash
         timestamp created_at
     }
@@ -84,10 +85,13 @@ Toutes les routes sauf `/api/auth/login` exigent le header
 
 | Méthode | Route                     | Description                                  |
 | ------- | ------------------------- | -------------------------------------------- |
-| POST    | `/api/auth/login`         | Connecte, retourne `{ token, user }`         |
+| POST    | `/api/auth/login`         | Connecte par e-mail, retourne `{ token, user }` |
 | GET     | `/api/auth/me`            | Compte courant (valide le token)             |
 | PUT     | `/api/auth/profile`       | Modifie l'e-mail du compte                   |
 | PUT     | `/api/auth/password`      | Modifie le mot de passe (vérifie l'actuel)   |
+| GET     | `/api/users`              | Liste des comptes (sans `password_hash`)     |
+| POST    | `/api/users`              | Crée un compte (prénom + nom + e-mail, mdp temporaire envoyé par e-mail) |
+| DELETE  | `/api/users/:id`          | Supprime un compte (auto-suppression refusée) |
 | GET     | `/api/types`              | Types + champs du gabarit                    |
 | POST    | `/api/types`              | Crée un type                                 |
 | PUT     | `/api/types/:id`          | Renomme / décrit un type                     |
@@ -123,9 +127,14 @@ flowchart LR
   réactifs à la recherche), barre d'onglets fixe hors du conteneur de scroll,
   en-têtes de colonnes sticky dans chaque DataTable, rechargement au focus,
   édition inline (récupération du champ MAC via le double-clic).
-- **`/connexion`** — connexion (login + JWT). Le premier compte est créé hors
-  application via le script `backend/scripts/add-user.ts` exécuté dans le
-  conteneur backend (`docker exec`), qui hache le mot de passe en bcrypt.
+- **`/connexion`** — connexion (e-mail + mot de passe + JWT). Les comptes sont
+  créés depuis `/utilisateurs` ou via le script `backend/scripts/add-user.ts`
+  exécuté dans le conteneur backend (`docker exec`).
+- **`/utilisateurs`** — création et liste des comptes (prénom, nom, e-mail,
+  DataTable avec recherche et tri) : `POST /api/users` génère un mot de passe
+  temporaire qui est envoyé par e-mail (SMTP) ou renvoyé dans la réponse si
+  SMTP est absent ; suppression avec confirmation, auto-suppression bloquée
+  côté API.
 - **`/gabarits`** — gestion des types et de leurs champs (création, renommage,
   suppression, réordonnancement).
 - **`/profil`** — compte connecté : modification de l'e-mail et du mot de passe
@@ -148,11 +157,15 @@ flowchart LR
 - Workflow GitHub `.github/workflows/deploy.yml` : build dist + compose up sur le
   VPS (`/home/jeanxxiii-apps/inventory-it`, runner self-hosted).
 - Variables attendues côté prod : `NEXT_PUBLIC_API_URL`, `MYSQL_*`, `JWT_SECRET`,
-  `FRONTEND_URL`, `DB_PORT_REMOTE` (port exposé de MariaDB pour backups).
+  `FRONTEND_URL`, `DB_PORT_REMOTE` (port exposé de MariaDB pour backups), et
+  optionnellement `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` pour
+  l'envoi des identifiants à la création d'un compte (sans elles, le mot de
+  passe temporaire est renvoyé en clair dans la réponse API).
 
 ## 6. État connu / limites
 
 - `npm run lint` (eslint-config-next + typescript-eslint) échoue sur TypeScript 7 :
   erreur identique sur tous les projets (DEFI-Vie-de-classe compris). Le contrôle
   TS du build (`next build`) reste actif et passe.
-- Un seul rôle : tout compte authentifié a accès à tout.
+- Un seul rôle : tout compte authentifié a accès à tout ; identifiants = e-mail
+  unique + mot de passe (colonne `username` supprimée de `users`).

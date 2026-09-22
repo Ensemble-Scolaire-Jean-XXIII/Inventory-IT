@@ -9,8 +9,9 @@ export type FieldInputType =
 
 export interface User {
   id: string;
-  username: string;
-  email?: string | null;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
   password_hash: string;
   created_at?: string;
 }

@@ -21,9 +21,13 @@ export default function ProfilePage() {
   const handleSaveEmail = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!email.trim()) {
+        showToast("L'adresse e-mail est requise.", "error");
+        return;
+      }
       setIsSavingEmail(true);
       try {
-        await authService.updateProfile(email.trim() || null);
+        await authService.updateProfile(email.trim());
         await refreshUser();
         showToast("Adresse e-mail mise à jour.", "success");
       } catch (err) {
@@ -70,7 +74,9 @@ export default function ProfilePage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Profil</h1>
         <p className="text-sm text-(--text-muted)">
-          Connecté en tant que {user?.username}.
+          {user?.first_name || user?.last_name
+            ? `Connecté en tant que ${[user?.first_name, user?.last_name].filter(Boolean).join(" ")} — ${user?.email}.`
+            : `Connecté en tant que ${user?.email}.`}
         </p>
       </div>
 

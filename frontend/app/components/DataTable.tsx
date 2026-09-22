@@ -48,12 +48,22 @@ export default function DataTable<T>({
   onSave,
   onCancel,
   onDelete,
+  hideEdit = false,
+  isDeletable = () => true,
   sortField,
   sortDirection,
   onSort,
   isLoading = false,
   emptyMessage = "Aucun résultat trouvé.",
 }: DataTableProps<T>) {
+  const roundedCornerTopLeft =
+    "rounded-tl-[calc(var(--radius-box)/1.5)]";
+  const roundedCornerTopRight =
+    "rounded-tr-[calc(var(--radius-box)/1.5)]";
+  const roundedCornerBottomLeft =
+    "rounded-bl-[calc(var(--radius-box)/1.5)]";
+  const roundedCornerBottomRight =
+    "rounded-br-[calc(var(--radius-box)/1.5)]";
   const Actions = ({ id, item }: { id: string | number; item: T }) => {
     if (editingId === id) {
       return (
@@ -75,18 +85,22 @@ export default function DataTable<T>({
     }
     return (
       <div className="flex gap-1.5 justify-end opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-200">
-        <Button
-          onClick={() => onEdit(item)}
-          title="Modifier"
-          className="bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30"
-          icon="/icons/edit.webp"
-        />
-        <Button
-          onClick={() => onDelete(id)}
-          title="Supprimer"
-          className="bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30"
-          icon="/icons/trash.webp"
-        />
+        {!hideEdit && (
+          <Button
+            onClick={() => onEdit(item)}
+            title="Modifier"
+            className="bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30"
+            icon="/icons/edit.webp"
+          />
+        )}
+        {isDeletable(item) && (
+          <Button
+            onClick={() => onDelete(id)}
+            title="Supprimer"
+            className="bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30"
+            icon="/icons/trash.webp"
+          />
+        )}
       </div>
     );
   };
@@ -101,7 +115,9 @@ export default function DataTable<T>({
               {columns.map((col, i) => (
                 <th
                   key={i}
-                  className={`sticky top-0 z-10 px-3 py-3 font-semibold bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) ${col.className || ""}`}
+                  className={`sticky top-0 z-10 px-3 py-3 font-semibold bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) ${
+                    col.className || ""
+                  } ${i === 0 ? roundedCornerTopLeft : ""}`}
                 >
                   {col.sortable && onSort ? (
                     <button
@@ -122,7 +138,7 @@ export default function DataTable<T>({
                   )}
                 </th>
               ))}
-              <th className="sticky top-0 z-10 px-3 py-3 font-semibold text-right bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) w-24">
+              <th className={`sticky top-0 z-10 px-3 py-3 font-semibold text-right bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) w-24 ${roundedCornerTopRight}`}>
                 Actions
               </th>
             </tr>
@@ -159,7 +175,13 @@ export default function DataTable<T>({
                         key={i}
                         className={`px-3 py-3 truncate ${
                           isEditing ? "" : col.className || ""
-                        } ${rowIndex === data.length - 1 ? "border-b-0" : ""}`}
+                        } ${
+                          rowIndex === data.length - 1 && i === 0
+                            ? roundedCornerBottomLeft
+                            : ""
+                        } ${
+                          rowIndex === data.length - 1 ? "border-b-0" : ""
+                        }`}
                       >
                         {isEditing && col.renderEdit
                           ? col.renderEdit(editForm, (val) =>
@@ -170,7 +192,13 @@ export default function DataTable<T>({
                             : displayValue((item as any)[col.field])}
                       </td>
                     ))}
-                    <td className="px-3 py-3 text-right">
+                    <td
+                      className={`px-3 py-3 text-right ${
+                        rowIndex === data.length - 1
+                          ? roundedCornerBottomRight
+                          : ""
+                      }`}
+                    >
                       <Actions id={id} item={item} />
                     </td>
                   </tr>

@@ -3,15 +3,15 @@ import { User } from "../types/models";
 
 export const authService = {
   login: async (
-    username: string,
+    email: string,
     password: string,
   ): Promise<{ token: string; user: User }> => {
-    return api.post("/auth/login", { username, password });
+    return api.post("/auth/login", { email, password });
   },
   me: async (): Promise<User> => {
     return api.get("/auth/me");
   },
-  updateProfile: async (email: string | null): Promise<User> => {
+  updateProfile: async (email: string): Promise<User> => {
     return api.put("/auth/profile", { email });
   },
   updatePassword: async (

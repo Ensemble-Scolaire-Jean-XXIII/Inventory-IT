@@ -2,6 +2,7 @@ import express from "express";
 import { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/userRoutes";
 import objectTypeRoutes from "./routes/objectTypeRoutes";
 import objectFieldRoutes from "./routes/objectFieldRoutes";
 import objectRoutes from "./routes/objectRoutes";
@@ -15,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/types", objectTypeRoutes);
 app.use("/api/fields", objectFieldRoutes);
 app.use("/api/objects", objectRoutes);

@@ -15,7 +15,7 @@ DataTables filtrables et graphiques par type.
 
 ```
 backend/     API REST TypeScript (Express + MariaDB)
-frontend/    Application Next.js (pages inventaire, connexion, gabarits, profil)
+frontend/    Application Next.js (pages inventaire, connexion, gabarits, profil, utilisateurs)
 init.sql     Schéma + seed des 6 types (exécuté au premier démarrage de la DB)
 docker-compose.yml        Environnement de développement
 docker-compose.prod.yml   Environnement de production (VPS)
@@ -40,12 +40,14 @@ make dev-logs    # logs
    exécuté dans le conteneur backend (le mot de passe est haché en bcrypt) :
 
 ```bash
-# développement
-docker exec -it backend-inventory-it npx tsx scripts/add-user.ts admin votre-mdp
+# développement (email obligatoire, mdp/ prénom/nom optionnels — mdp généré + envoyé par e-mail si SMTP configuré)
+docker exec -it backend-inventory-it npx tsx scripts/add-user.ts admin@jean23.org votre-mdp "Jean" "Dupont"
 
 # production (l'image est compilée, sans TypeScript runtime)
-docker exec -it backend-inventory-it-prod node dist/scripts/add-user.js admin votre-mdp
+docker exec -it backend-inventory-it-prod node dist/scripts/add-user.js admin@jean23.org votre-mdp "Jean" "Dupont"
 ```
+
+La connexion se fait ensuite avec cet e-mail + le mot de passe.
 
 > Le script `backend/scripts/add-user.ts` est volontairement **hors du dépôt**
 > (gitignoré) : il doit exister sur la machine/vps pour être inclus dans
@@ -62,9 +64,10 @@ docker exec -it backend-inventory-it-prod node dist/scripts/add-user.js admin vo
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:5000/api/auth/login -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"votre-mdp"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+  -d '{"email":"admin@jean23.org","password":"votre-mdp"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 
 curl -s localhost:5000/api/types -H "Authorization: Bearer $TOKEN"
+curl -s localhost:5000/api/users -H "Authorization: Bearer $TOKEN"
 curl -s -X POST localhost:5000/api/objects -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"object_type_id":1,"name":"Switch Salle 12","data":{"adresse_mac":"AA:BB:CC:DD:EE:01"}}'
@@ -77,6 +80,9 @@ curl -s -X POST localhost:5000/api/objects -H "Authorization: Bearer $TOKEN" \
   `db_data_prod`.
 - Variables requises : `NEXT_PUBLIC_API_URL`, `MYSQL_*`, `JWT_SECRET`,
   `FRONTEND_URL`, et `DB_PORT_REMOTE` si vous exposez MariaDB pour les backups.
+- Variables optionnelles (e-mail d'invitation) : `SMTP_HOST`, `SMTP_PORT`,
+  `SMTP_USER`, `SMTP_PASS` — si absentes, la création d'un utilisateur renvoie
+  le mot de passe temporaire dans l'API / la console du script.
 - Rebranchez le domaine dans Cloudflare en cas de réinstallation.
 - Le workflow `.github/workflows/deploy.yml` déploie automatiquement sur le VPS
   (`/home/jeanxxiii-apps/inventory-it`) à chaque push sur `main`.
@@ -88,5 +94,9 @@ curl -s -X POST localhost:5000/api/objects -H "Authorization: Bearer $TOKEN" \
   l'autorité.
 - **`/profil`** — compte connecté : e-mail et mot de passe modifiables depuis
   le header (« Profil »).
-- Un seul rôle : tout compte authentifié administre l'inventaire.
+- **`/utilisateurs`** — création et liste des comptes (prénom, nom, e-mail
+  unique, sans rôles) : à la création, un mot de passe temporaire est envoyé
+  par e-mail (SMTP) ou affiché si SMTP n'est pas configuré.
+- Un seul rôle : tout compte authentifié administre l'inventaire ; la connexion
+  se fait uniquement par e-mail + mot de passe.
 - Licence : MIT — voir `LICENSE`.

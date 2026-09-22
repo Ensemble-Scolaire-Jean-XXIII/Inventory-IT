@@ -58,6 +58,17 @@ function Header({ onLogout }: { onLogout: () => void }) {
           />
           <span className="hidden md:inline">Gabarits</span>
         </Link>
+        <Link href="/utilisateurs" className="crm-btn-ghost text-xs" title="Gérer les comptes utilisateurs">
+          <Image
+            src="/icons/users.webp"
+            alt="Utilisateurs"
+            width={14}
+            height={14}
+            className="object-contain brightness-0 invert shrink-0"
+            unoptimized
+          />
+          <span className="hidden md:inline">Utilisateurs</span>
+        </Link>
         <Link href="/profil" className="crm-btn-ghost text-xs" title="Gérer l'e-mail et le mot de passe">
           <Image
             src="/icons/profile.webp"

@@ -6,16 +6,16 @@ const router = Router();
 
 router.post("/login", async (req, res, next) => {
   try {
-    const { username, password } = req.body as {
-      username?: string;
+    const { email, password } = req.body as {
+      email?: string;
       password?: string;
     };
-    if (!username?.trim() || !password) {
+    if (!email?.trim() || !password) {
       return res.status(400).json({
-        error: "Un nom d'utilisateur et un mot de passe sont requis.",
+        error: "Une adresse e-mail et un mot de passe sont requis.",
       });
     }
-    const result = await authService.login(username.trim(), password);
+    const result = await authService.login(email.trim().toLowerCase(), password);
     res.json(result);
   } catch (error) {
     next(error);
@@ -37,8 +37,8 @@ router.get("/me", authenticate, async (req, res, next) => {
 router.put("/profile", authenticate, async (req, res, next) => {
   try {
     const { email } = req.body as { email?: string };
-    const normalized = email?.trim() || null;
-    if (normalized && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    const normalized = email?.trim().toLowerCase();
+    if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
       return res.status(400).json({ error: "Adresse e-mail invalide." });
     }
     const user = await authService.updateEmail((req as any).user.id, normalized);

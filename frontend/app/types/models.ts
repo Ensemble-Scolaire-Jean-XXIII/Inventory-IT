@@ -9,8 +9,9 @@ export type FieldInputType =
 
 export interface User {
   id: string;
-  username: string;
-  email?: string | null;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
   created_at?: string;
 }
 
@@ -90,6 +91,8 @@ export interface DataTableProps<T> {
   onSave: (id: string | number, payload: Partial<T>) => void;
   onCancel: () => void;
   onDelete: (id: string | number) => void;
+  hideEdit?: boolean;
+  isDeletable?: (item: T) => boolean;
   sortField?: string;
   sortDirection?: "asc" | "desc";
   onSort?: (field: string) => void;
