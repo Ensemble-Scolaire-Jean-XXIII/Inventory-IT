@@ -64,7 +64,16 @@ export const createType = async (
       "INSERT INTO object_types (name, sort_order) VALUES (?, ?)",
       [name.trim(), sortOrder ?? 0],
     );
-    return result.insertId;
+    const typeId = result.insertId;
+
+    // Create default "État" field with enum values
+    await pool.query(
+      `INSERT INTO object_fields (object_type_id, label, field_key, input_type, options, is_required, sort_order)
+       VALUES (?, 'État', 'etat', 'select', ?, 1, 0)`,
+      [typeId, JSON.stringify(["Neuf", "Bon état", "Usagé", "HS"])],
+    );
+
+    return typeId;
   } catch (error: any) {
     throw handleDatabaseError(error);
   }
