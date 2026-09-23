@@ -114,7 +114,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex-1 flex flex-col justify-center px-4 space-y-4">
             <div>
-              <label className="block text-xs text-(--text-muted) mb-1.5">
+              <label className="block text-xs text-(--text-muted) mb-1.5 text-center">
                 Mot de passe actuel
               </label>
               <input
@@ -126,7 +126,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-(--text-muted) mb-1.5">
+              <label className="block text-xs text-(--text-muted) mb-1.5 text-center">
                 Nouveau mot de passe
               </label>
               <input
@@ -138,7 +138,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-(--text-muted) mb-1.5">
+              <label className="block text-xs text-(--text-muted) mb-1.5 text-center">
                 Confirmer le nouveau mot de passe
               </label>
               <input

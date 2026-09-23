@@ -56,6 +56,7 @@ export default function GabaritsPage() {
   }, [undoAction, setUndoAction, showToast]);
 
   const loadTypes = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await typeService.getAll();
       setTypes(res);

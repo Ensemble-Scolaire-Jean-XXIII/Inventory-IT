@@ -17,6 +17,7 @@ export function useInventory() {
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
   const load = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [typeRes, objectRes] = await Promise.all([
         typeService.getAll(),

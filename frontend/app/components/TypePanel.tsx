@@ -19,6 +19,7 @@ import { displayValue } from "../lib/format";
 interface TypePanelProps {
   type: ObjectType;
   rows: InventoryObject[];
+  isLoading?: boolean;
   onAdd: (payload: CreateObjectPayload) => Promise<boolean>;
   onUpdate: (
     id: number,
@@ -35,6 +36,7 @@ const sortValue = (value: unknown): string | number => {
 export default function TypePanel({
   type,
   rows,
+  isLoading = false,
   onAdd,
   onUpdate,
   onDelete,
@@ -194,7 +196,7 @@ export default function TypePanel({
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={handleSort}
-            isLoading={false}
+            isLoading={isLoading}
             emptyMessage={`Aucun ${type.name.toLowerCase()} trouvé.`}
           />
         </div>

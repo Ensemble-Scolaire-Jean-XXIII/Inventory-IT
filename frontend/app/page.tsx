@@ -164,6 +164,7 @@ export default function HomePage() {
             key={type.id}
             type={type}
             rows={inventory.objectsByType[type.id] || []}
+            isLoading={inventory.isLoading}
             onAdd={handleAdd}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
