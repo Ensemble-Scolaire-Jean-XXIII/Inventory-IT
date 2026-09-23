@@ -95,6 +95,7 @@ export interface DataTableProps<T> {
   hideEdit?: boolean;
   isDeletable?: (item: T) => boolean;
   rowClassName?: (item: T) => string;
+  onRowClick?: (item: T) => void;
   onReorder?: (fromId: string | number, toId: string | number) => void;
   sortField?: string;
   sortDirection?: "asc" | "desc";

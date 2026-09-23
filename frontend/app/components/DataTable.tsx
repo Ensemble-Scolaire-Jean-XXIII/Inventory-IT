@@ -53,6 +53,7 @@ export default function DataTable<T>({
   hideEdit = false,
   isDeletable = () => true,
   rowClassName,
+  onRowClick,
   onReorder,
   sortField,
   sortDirection,
@@ -74,13 +75,19 @@ export default function DataTable<T>({
       return (
         <div className="flex gap-1.5 justify-end">
           <Button
-            onClick={() => onSave(id, editForm)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave(id, editForm);
+            }}
             title="Enregistrer"
             className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30"
             icon="/icons/approved.webp"
           />
           <Button
-            onClick={onCancel}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
             title="Annuler"
             className="bg-white/5 border border-(--border-color) text-(--text-main) hover:bg-white/10"
             icon="/icons/cancel.webp"
@@ -92,7 +99,10 @@ export default function DataTable<T>({
       <div className="flex gap-1.5 justify-end opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-200">
         {!hideEdit && (
           <Button
-            onClick={() => onEdit(item)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(item);
+            }}
             title="Modifier"
             className="bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30"
             icon="/icons/edit.webp"
@@ -100,7 +110,10 @@ export default function DataTable<T>({
         )}
         {isDeletable(item) && (
           <Button
-            onClick={() => onDelete(id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(id);
+            }}
             title="Supprimer"
             className="bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30"
             icon="/icons/trash.webp"
@@ -199,12 +212,25 @@ export default function DataTable<T>({
                     onDragEnd={
                       draggable ? () => setDragId(null) : undefined
                     }
+                    onClick={
+                      onRowClick && !isEditing
+                        ? (e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button, a, input, select, textarea, label")) {
+                              return;
+                            }
+                            onRowClick(item);
+                          }
+                        : undefined
+                    }
                     className={`group border-b border-(--border-color) hover:bg-white/5 transition-colors ${
                       isEditing ? "bg-white/5" : ""
                     } ${
                       draggable
                         ? "cursor-grab active:cursor-grabbing"
-                        : ""
+                        : onRowClick
+                          ? "cursor-pointer"
+                          : ""
                     } ${rowClassName ? rowClassName(item) : ""} ${
                       dragId === id ? "opacity-50" : ""
                     }`}

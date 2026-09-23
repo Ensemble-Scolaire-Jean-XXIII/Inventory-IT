@@ -706,15 +706,12 @@ function FieldEditor({
 
   return (
     <div className="flex flex-col min-h-0 gap-3">
-      <div className="crm-card p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight">{type.name}</h2>
-          <p className="text-xs text-(--text-muted)">
-            Gabarit personnalisé — {type.fields.length} champs (
-            {type.fields.filter((f) => f.is_required).length} requis)
-          </p>
-        </div>
-        <RefreshButton onRefresh={onChanged} />
+      <div className="crm-card p-4">
+        <h2 className="text-lg font-bold tracking-tight">{type.name}</h2>
+        <p className="text-xs text-(--text-muted)">
+          Gabarit personnalisé — {type.fields.length} champs (
+          {type.fields.filter((f) => f.is_required).length} requis)
+        </p>
       </div>
 
       <form
