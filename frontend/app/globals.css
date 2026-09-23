@@ -171,6 +171,29 @@ body {
   animation-delay: 24s;
 }
 
+.drop-before {
+  box-shadow: inset 0 3px 0 0 var(--accent);
+}
+
+.drop-after {
+  box-shadow: inset 0 -3px 0 0 var(--accent);
+}
+
+.toast-in {
+  animation: toast-pop 0.25s ease-out;
+}
+
+@keyframes toast-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes diapo-anim {
   0% {
     opacity: 0;

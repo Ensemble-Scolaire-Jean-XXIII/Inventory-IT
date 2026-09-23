@@ -75,7 +75,7 @@ export function DoughnutChart({ data }: { data: DoughnutSlice[] }) {
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-36 text-xs text-(--text-muted)">
+      <div className="flex items-center justify-center h-24 text-xs text-(--text-muted)">
         Aucune donnée à afficher.
       </div>
     );
@@ -84,19 +84,16 @@ export function DoughnutChart({ data }: { data: DoughnutSlice[] }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative mx-auto">
-        <svg viewBox="0 0 120 120" className="h-36 w-36">
+        <svg viewBox="0 0 120 120" className="h-26 w-26">
           {segments.map((seg, i) => (
             <path key={i} d={seg.path} fill={seg.color} />
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-xl font-bold">{total}</span>
-          <span className="text-[10px] uppercase tracking-wider text-(--text-muted)">
-            objets
-          </span>
         </div>
       </div>
-      <ul className="space-y-1.5">
+      <ul className="space-y-1.5 max-h-14 overflow-y-auto custom-scrollbar">
         {segments.map((seg, i) => (
           <li
             key={i}

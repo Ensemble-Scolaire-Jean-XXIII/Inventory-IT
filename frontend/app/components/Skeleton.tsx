@@ -14,7 +14,7 @@ export function TableSkeleton({
       {Array.from({ length: rows }).map((_, rowIdx) => (
         <tr key={rowIdx} className="border-b border-white/5">
           {Array.from({ length: columns }).map((_, colIdx) => (
-            <td key={colIdx} className="px-3 py-3.5">
+            <td key={colIdx} className="px-3 py-3">
               <div
                 className={`animate-pulse bg-white/5 rounded h-6 ${
                   colIdx === 0

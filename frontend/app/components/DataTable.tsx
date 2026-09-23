@@ -13,7 +13,7 @@ const Button = ({
   icon,
   children,
 }: {
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   title: string;
   className: string;
   icon?: string;
@@ -52,6 +52,7 @@ export default function DataTable<T>({
   onDelete,
   hideEdit = false,
   isDeletable = () => true,
+  actionsHeader,
   rowClassName,
   onRowClick,
   onReorder,
@@ -60,8 +61,13 @@ export default function DataTable<T>({
   onSort,
   isLoading = false,
   emptyMessage = "Aucun résultat trouvé.",
+  className = "",
 }: DataTableProps<T>) {
   const [dragId, setDragId] = useState<string | number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    id: string | number;
+    position: "before" | "after";
+  } | null>(null);
   const roundedCornerTopLeft =
     "rounded-tl-[calc(var(--radius-box)/1.5)]";
   const roundedCornerTopRight =
@@ -126,7 +132,9 @@ export default function DataTable<T>({
   const totalColumns = columns.length + 1;
 
   return (
-    <div className="flex flex-col min-h-0 h-full overflow-y-auto custom-scrollbar">
+    <div
+      className={`flex flex-col min-h-0 h-full overflow-y-auto custom-scrollbar ${className}`}
+    >
       <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
           <thead>
             <tr>
@@ -156,9 +164,11 @@ export default function DataTable<T>({
                   )}
                 </th>
               ))}
-              <th className={`sticky top-0 z-10 px-3 py-3 font-semibold text-right bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) w-24 ${roundedCornerTopRight}`}>
-                Actions
-              </th>
+<th className={`sticky top-0 z-10 px-3 py-3 font-semibold bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) ${
+                    actionsHeader ? "text-left w-40" : "text-right w-24"
+                  } ${roundedCornerTopRight}`}>
+                  {actionsHeader ?? "Actions"}
+                </th>
             </tr>
           </thead>
           <tbody className="text-(--text-main)">
@@ -187,6 +197,7 @@ export default function DataTable<T>({
                         ? (e) => {
                             e.dataTransfer.effectAllowed = "move";
                             setDragId(id);
+                            setDropTarget(null);
                           }
                         : undefined
                     }
@@ -195,6 +206,14 @@ export default function DataTable<T>({
                         ? (e) => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = "move";
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setDropTarget({
+                              id,
+                              position:
+                                e.clientY < rect.top + rect.height / 2
+                                  ? "before"
+                                  : "after",
+                            });
                           }
                         : undefined
                     }
@@ -206,11 +225,17 @@ export default function DataTable<T>({
                               onReorder(dragId, id);
                             }
                             setDragId(null);
+                            setDropTarget(null);
                           }
                         : undefined
                     }
                     onDragEnd={
-                      draggable ? () => setDragId(null) : undefined
+                      draggable
+                        ? () => {
+                            setDragId(null);
+                            setDropTarget(null);
+                          }
+                        : undefined
                     }
                     onClick={
                       onRowClick && !isEditing
@@ -239,6 +264,12 @@ export default function DataTable<T>({
                       <td
                         key={i}
                         className={`px-3 py-3 truncate ${
+                          dropTarget?.id === id
+                            ? dropTarget.position === "before"
+                              ? "drop-before"
+                              : "drop-after"
+                            : ""
+                        } ${
                           isEditing ? "" : col.className || ""
                         } ${
                           rowIndex === data.length - 1 && i === 0
@@ -259,6 +290,12 @@ export default function DataTable<T>({
                     ))}
                     <td
                       className={`px-3 py-3 text-right ${
+                        dropTarget?.id === id
+                          ? dropTarget.position === "before"
+                            ? "drop-before"
+                            : "drop-after"
+                          : ""
+                      } ${
                         rowIndex === data.length - 1
                           ? roundedCornerBottomRight
                           : ""

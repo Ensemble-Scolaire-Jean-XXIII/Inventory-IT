@@ -25,6 +25,7 @@ export default function UtilisateursPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   const loadUsers = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await userService.getUsers();
       setUsers(res);
@@ -169,7 +170,7 @@ export default function UtilisateursPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-0 px-4 py-4">
+    <div className="flex flex-col flex-1 min-h-0 px-4 py-4">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Utilisateurs</h1>
@@ -223,38 +224,35 @@ export default function UtilisateursPage() {
         </button>
       </form>
 
-      <div className="flex flex-col min-h-0 px-3 py-2 border border-(--border-color) rounded-[calc(var(--radius-box)/1.5)] bg-(--bg-card) backdrop-blur-xl">
-        <div className="flex justify-end px-2 py-2">
+      <DataTable<User>
+        data={sorted}
+        columns={columns}
+        keyExtractor={(item) => item.id}
+        editingId={null}
+        editForm={{}}
+        setEditForm={() => {}}
+        onEdit={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+        onDelete={handleDelete}
+        hideEdit
+        isDeletable={(item) => item.id !== currentUser?.id}
+        actionsHeader={
           <input
             type="text"
-            className="crm-input w-56 py-1 text-xs"
+            className="crm-input w-full py-1 text-xs"
             placeholder="Rechercher…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
-        <div className="flex-1 min-h-0">
-          <DataTable<User>
-            data={sorted}
-            columns={columns}
-            keyExtractor={(item) => item.id}
-            editingId={null}
-            editForm={{}}
-            setEditForm={() => {}}
-            onEdit={() => {}}
-            onSave={() => {}}
-            onCancel={() => {}}
-            onDelete={handleDelete}
-            hideEdit
-            isDeletable={(item) => item.id !== currentUser?.id}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            isLoading={isLoading}
-            emptyMessage="Aucun utilisateur."
-          />
-        </div>
-      </div>
+        }
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSort={handleSort}
+        isLoading={isLoading}
+        emptyMessage="Aucun utilisateur."
+        className="flex-1 min-h-0 bg-(--bg-card) border border-(--border-color) rounded-[calc(var(--radius-box)/1.5)]"
+      />
     </div>
   );
 }

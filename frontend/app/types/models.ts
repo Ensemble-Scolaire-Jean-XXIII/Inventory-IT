@@ -94,6 +94,7 @@ export interface DataTableProps<T> {
   onDelete: (id: string | number) => void;
   hideEdit?: boolean;
   isDeletable?: (item: T) => boolean;
+  actionsHeader?: React.ReactNode;
   rowClassName?: (item: T) => string;
   onRowClick?: (item: T) => void;
   onReorder?: (fromId: string | number, toId: string | number) => void;
@@ -102,6 +103,7 @@ export interface DataTableProps<T> {
   onSort?: (field: string) => void;
   isLoading?: boolean;
   emptyMessage?: string;
+  className?: string;
 }
 
 export interface CrudService<T, CreatePayload> {

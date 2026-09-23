@@ -146,26 +146,44 @@ flowchart LR
   en-têtes de colonnes sticky dans chaque DataTable, rechargement au focus,
   édition inline (récupération du champ MAC via le double-clic). La modification
   et la suppression d'un objet sont **optimistes** : appliquées à l'écran puis
-  persistées après 3 s, avec toast « Annuler » (temps de rétractation).
+  persistées après 3 s, avec toast « Annuler » (temps de rétractation). Les
+  DataTables et les encarts statistiques ont une **hauteur fixe commune**
+  (`h-[30rem]`, identique en skeleton et en réel) : la page ne grandit plus avec
+  le nombre d'objets, le contenu défile en interne. Le camembert est volontairement
+  compact (`h-26`) et sa légende est plafonnée à ~3 lignes puis scrollable, afin
+  de laisser le graphique en barres visible.
 - **`/connexion`** — connexion (e-mail + mot de passe + JWT). Les comptes sont
   créés depuis `/utilisateurs` ou via le script `backend/scripts/add-user.ts`
   exécuté dans le conteneur backend (`docker exec`).
 - **`/utilisateurs`** — création et liste des comptes (prénom, nom, e-mail,
-  DataTable avec recherche et tri, skeleton pendant le chargement) : `POST /api/users`
-  génère un mot de passe temporaire qui est envoyé par e-mail (SMTP) ou renvoyé
-  dans la réponse si SMTP est absent ; suppression avec confirmation,
-  auto-suppression bloquée côté API.
+  DataTable avec recherche **dans l'en-tête de la colonne Actions** et tri,
+  skeleton pendant le chargement et à chaque rafraîchissement) : la DataTable
+  remplit toute la page (hauteur = un écran, scroll interne des lignes, carte
+  opaque `bg-(--bg-card)` appliquée directement dessus). `POST /api/users`
+  génère un mot de passe temporaire envoyé par e-mail (SMTP) ou renvoyé dans la
+  réponse si SMTP est absent ; suppression avec confirmation, auto-suppression
+  bloquée côté API.
 - **`/gabarits`** — gestion des types et de leurs champs (création, renommage,
   suppression avec rétractation). L'ordre est géré **uniquement** en **drag &
   drop** : une colonne poignée (`drag.webp`) en tête de chaque ligne signale que
-  c'est déplaçable, et le réordonnancement global est poussé en une requête
-  (`/types/reorder`). Un simple clic sur une ligne sélectionne le type (ligne
-  surlignée) ; l'ordre n'est plus modifiable via le formulaire d'édition. La page
-  a une **hauteur fixe sur desktop** : les listes défilent en interne (en-têtes
-  sticky), sans scroller la page entière.
+  c'est déplaçable, un **trait d'insertion** (ligne accent, dessus ou dessous)
+  indique où le champ sera inséré, et le réordonnancement global est poussé en
+  une requête (`/types/reorder`). Un simple clic sur une ligne sélectionne le
+  type (ligne surlignée) ; l'ordre n'est plus modifiable via le formulaire
+  d'édition. La recherche des types vit dans l'en-tête de la colonne Actions
+  (le drag est désactivé pendant la recherche). Le formulaire d'ajout de champ
+  est en 4 colonnes égales (Libellé | Type | Requis | Ajouter, options pleine
+  largeur si « Liste de choix ») ; la **clé technique est générée
+  automatiquement** depuis le libellé (`slugifyKey` + `uniqueKey` dans
+  `lib/format.ts`, ex. « Adresse MAC » → `adresse_mac`, doublons suffixés
+  `_2`/`_3`…), le saisie manuelle a disparu. Le composant `FieldEditor` est
+  extrait dans `components/FieldEditor.tsx`. La page a une **hauteur fixe sur
+  desktop** : les listes défilent en interne (en-têtes sticky), sans scroller
+  la page entière.
 - **`/profil`** — compte connecté : modification de l'e-mail et du mot de passe
   (change l'e-mail via `PUT /api/auth/profile`, le mot de passe via
-  `PUT /api/auth/password`).
+  `PUT /api/auth/password`). Les champs du mot de passe sont centrés et
+  limités en largeur (`max-w-xs`).
 
 ### État
 
@@ -174,19 +192,36 @@ flowchart LR
   rechargement après persistance.
 - `useUndo` : machine d'annulation partagée (snapshot, mutation optimiste,
   persistance différée 3 s, rollback au clic « Annuler » ou en cas d'échec API).
+  Le toast d'annulation reprend le design du CRM Jean-XXIII : fond `bg-(--bg-card)`,
+  pastille de couleur (orange édition, vert succès, rouge erreur, bleu info),
+  bouton « Annuler », et **barre-slider de temps** en bas qui décroît
+  visuellement (compte à rebours) avec auto-fermeture — même en présence de
+  l'annulation.
 - `useSearch` / `useSort` partagés entre les panneaux (filtre par objet, colonne,
   type).
 - `RefreshButton` : bouton d'actualisation avec rotation de l'icône pendant et
   après le chargement (composant réutilisé sur `/`, `/gabarits`, `/utilisateurs`).
 - `DataTable` générique : scroll interne avec en-têtes sticky, skeleton de
-  chargement (`TableSkeleton`), surlignage de ligne (`rowClassName` via callback)
-  et **réordonnancement par drag & drop** (`onReorder`) quand les lignes sont
-  déplaçables.
+  chargement (`TableSkeleton`, padding aligné sur les lignes réelles),
+  surlignage de ligne (`rowClassName` via callback) et **réordonnancement par
+  drag & drop** (`onReorder`) avec **trait d'insertion** (`drop-before` /
+  `drop-after` : ligne accent au-dessus ou en dessous selon la moitié survolée).
+  Props supplémentaires : `actionsHeader` (contenu custom dans l'en-tête de la
+  colonne Actions — utilisé pour les recherches des types et des utilisateurs)
+  et `className` (optionnel, appliqué à la racine).
+- `FieldEditor` (`components/FieldEditor.tsx`) : formulaire d'ajout de champ en
+  colonnes 25 % (Libellé | Type | Requis | Ajouter), switch « Requis » assorti
+  aux autres inputs, et clé technique déduite du libellé via
+  `slugifyKey`/`uniqueKey` (`lib/format.ts`).
 - `LayoutWrapper` : bouton de navigation **actif** surligné (accent) selon la
   page courante (accueil, gabarits, utilisateurs, profil).
 - Page d'accueil : onglets de types synchronisés à la section visible (l'onglet
   cliqué est activé immédiatement, puis l'observeur d'intersection reprend à la
-  fin du scroll) et skeleton complet pendant le chargement initial.
+  fin du scroll) et skeleton complet pendant le chargement initial (mêmes
+  hauteurs fixes que les panneaux réels).
+- Icônes : seules les icônes réellement référencées sont gardées dans
+  `frontend/public/icons/` (les `.webp` inutilisés hérités du CRM ont été
+  supprimés).
 - 401 → suppression du token + redirection `/connexion` ; exception : une erreur
   401 de login (pas de token stocké) est remontée telle quelle.
 

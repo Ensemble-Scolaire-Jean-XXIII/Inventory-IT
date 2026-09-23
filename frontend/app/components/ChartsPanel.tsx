@@ -65,8 +65,8 @@ export default function ChartsPanel({
   }, [rows]);
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div>
+    <div className="flex flex-col h-full gap-3 p-4">
+      <div className="shrink-0">
         <div className="flex items-center justify-between gap-2 mb-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-(--text-muted)">
             Répartition

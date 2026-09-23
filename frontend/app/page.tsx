@@ -186,12 +186,38 @@ function PanelSkeleton() {
           <Skeleton className="h-9 w-28 rounded-lg" />
         </div>
       </div>
-      <div className="crm-card p-0 overflow-hidden">
-        <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
-          <tbody>
-            <TableSkeleton columns={5} rows={8} />
-          </tbody>
-        </table>
+      <div className="flex flex-col desktop:flex-row gap-3 min-h-0">
+        <div className="flex-1 min-w-0 crm-card p-0 overflow-hidden flex h-[30rem]">
+          <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
+            <thead>
+              <tr>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <th key={i} className="px-3 py-3">
+                    <div
+                      className={`animate-pulse bg-white/10 rounded h-4 ${
+                        i === 0 ? "w-3/4" : "w-full"
+                      }`}
+                    />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <TableSkeleton columns={5} rows={10} />
+            </tbody>
+          </table>
+        </div>
+        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden h-[30rem]">
+          <div className="px-4 pt-3 pb-2 border-b border-(--border-color) space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     </div>
   );
