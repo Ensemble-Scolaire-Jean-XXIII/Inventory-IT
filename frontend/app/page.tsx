@@ -6,6 +6,7 @@ import { useInventory } from "./hooks/useInventory";
 import { useToast } from "./contexts/ToastContext";
 import TypePanel from "./components/TypePanel";
 import RefreshButton from "./components/RefreshButton";
+import Skeleton, { TableSkeleton } from "./components/Skeleton";
 
 export default function HomePage() {
   const inventory = useInventory();
@@ -49,9 +50,10 @@ export default function HomePage() {
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0] as
-          | IntersectionObserverEntry
-          | undefined;
+          .sort(
+            (a, b) =>
+              a.boundingClientRect.top - b.boundingClientRect.top,
+          )[0] as IntersectionObserverEntry | undefined;
         if (visible) {
           const id = Number((visible.target as HTMLElement).dataset.typeId);
           if (!Number.isNaN(id)) setActiveTypeId(id);
@@ -68,6 +70,7 @@ export default function HomePage() {
   }, [inventory.types]);
 
   const scrollToPanel = (id: number) => {
+    setActiveTypeId(id);
     document
       .getElementById(`panel-${id}`)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -101,11 +104,7 @@ export default function HomePage() {
   };
 
   if (inventory.isLoading && inventory.types.length === 0) {
-    return (
-      <div className="flex-1 grid place-items-center text-(--text-muted)">
-        Chargement de l'inventaire…
-      </div>
-    );
+    return <InventorySkeleton />;
   }
 
   if (inventory.types.length === 0 && !inventory.isLoading) {
@@ -170,6 +169,49 @@ export default function HomePage() {
             onDelete={handleDelete}
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PanelSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 shrink-0">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Skeleton className="h-6 w-44" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <div className="ml-auto flex items-center gap-2">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+      </div>
+      <div className="crm-card p-0 overflow-hidden">
+        <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
+          <tbody>
+            <TableSkeleton columns={5} rows={8} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function InventorySkeleton() {
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 border-b border-(--border-color) px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+          <div className="ml-auto">
+            <Skeleton className="h-9 w-9 rounded-lg" />
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-8 py-4 px-4">
+        <PanelSkeleton />
+        <PanelSkeleton />
       </div>
     </div>
   );

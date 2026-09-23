@@ -34,13 +34,6 @@ const NAV_ITEMS = [
   },
 ];
 
-const CRUMB_LABELS: Record<string, string> = {
-  "/": "Accueil",
-  "/gabarits": "Gabarits",
-  "/utilisateurs": "Utilisateurs",
-  "/profil": "Profil",
-};
-
 function Header({
   onLogout,
   pathname,
@@ -121,40 +114,6 @@ function Header({
   );
 }
 
-function Breadcrumbs({ pathname }: { pathname: string }) {
-  const label = CRUMB_LABELS[pathname] || pathname.replace(/^\//, "");
-  const crumbs = pathname === "/" ? ["Accueil"] : ["Accueil", label];
-
-  return (
-    <nav className="shrink-0 px-5 py-1.5 bg-(--bg-header)/70 backdrop-blur-xl border-b border-(--border-color) flex items-center gap-1.5 text-xs text-(--text-muted) overflow-x-auto custom-scrollbar">
-      {crumbs.map((crumb, i) => {
-        const isLast = i === crumbs.length - 1;
-        return (
-          <span key={crumb} className="flex items-center gap-1.5 shrink-0">
-            {i > 0 && <span className="opacity-50">/</span>}
-            {!isLast ? (
-              <Link
-                href="/"
-                className="hover:text-(--text-main) hover:underline transition-colors"
-              >
-                {crumb}
-              </Link>
-            ) : (
-              <span
-                className={
-                  crumbs.length > 1 ? "text-(--accent) font-semibold" : ""
-                }
-              >
-                {crumb}
-              </span>
-            )}
-          </span>
-        );
-      })}
-    </nav>
-  );
-}
-
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -182,7 +141,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header onLogout={logout} pathname={pathname} />
-      {!isLoginPage && <Breadcrumbs pathname={pathname} />}
       <main className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
         {children}
       </main>

@@ -171,8 +171,11 @@ flowchart LR
   chargement (`TableSkeleton`), surlignage de ligne (`rowClassName` via callback)
   et **réordonnancement par drag & drop** (`onReorder`) quand les lignes sont
   déplaçables.
-- `LayoutWrapper` : fil d'Ariane sous le header (`Accueil / <page active>`) et
-  bouton de navigation actif surligné (accent).
+- `LayoutWrapper` : bouton de navigation **actif** surligné (accent) selon la
+  page courante (accueil, gabarits, utilisateurs, profil).
+- Page d'accueil : onglets de types synchronisés à la section visible (l'onglet
+  cliqué est activé immédiatement, puis l'observeur d'intersection reprend à la
+  fin du scroll) et skeleton complet pendant le chargement initial.
 - 401 → suppression du token + redirection `/connexion` ; exception : une erreur
   401 de login (pas de token stocké) est remontée telle quelle.
 
