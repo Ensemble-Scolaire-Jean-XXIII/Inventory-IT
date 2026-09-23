@@ -94,7 +94,6 @@ export default function TypePanel({
   };
 
   const handleDelete = async (id: string | number) => {
-    if (!window.confirm("Supprimer cet objet ?")) return;
     await onDelete(Number(id));
   };
 

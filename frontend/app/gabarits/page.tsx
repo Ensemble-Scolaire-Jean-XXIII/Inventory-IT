@@ -9,11 +9,12 @@ import {
   Column,
 } from "../types/models";
 import DataTable from "../components/DataTable";
+import RefreshButton from "../components/RefreshButton";
 import { typeService } from "../services/typeService";
 import { fieldService } from "../services/fieldService";
 import { useSearch } from "../hooks/useSearch";
-import { useSort } from "../hooks/useSort";
 import { useToast } from "../contexts/ToastContext";
+import { useUndo } from "../hooks/useUndo";
 
 const INPUT_TYPE_LABELS: Record<FieldInputType, string> = {
   text: "Texte",
@@ -29,6 +30,7 @@ const INPUT_TYPES = Object.keys(INPUT_TYPE_LABELS) as FieldInputType[];
 
 export default function GabaritsPage() {
   const { showToast } = useToast();
+  const { undoAction, setUndoAction, runWithUndo } = useUndo();
   const [types, setTypes] = useState<ObjectType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -40,6 +42,18 @@ export default function GabaritsPage() {
     null,
   );
   const [typeEditForm, setTypeEditForm] = useState<Partial<ObjectType>>({});
+
+  useEffect(() => {
+    if (undoAction) {
+      showToast(
+        undoAction.message,
+        "undo",
+        undoAction.duration,
+        undoAction.onUndo,
+      );
+      setUndoAction(null);
+    }
+  }, [undoAction, setUndoAction, showToast]);
 
   const loadTypes = useCallback(async () => {
     try {
@@ -77,7 +91,7 @@ export default function GabaritsPage() {
     try {
       const { id } = await typeService.create({
         name: newTypeName.trim(),
-        sort_order: types.length,
+        sort_order: types.length + 1,
       });
       notify(true, "Type créé.", "");
       setNewTypeName("");
@@ -90,21 +104,36 @@ export default function GabaritsPage() {
     }
   };
 
-  const handleSaveType = async (id: string | number) => {
-    try {
-      await typeService.update(Number(id), {
-        name: typeEditForm.name,
-        sort_order: Number(typeEditForm.sort_order),
-      });
-      setEditingTypeId(null);
-      notify(true, "Type mis à jour.", "");
-      loadTypes();
-    } catch (err) {
-      notify(false, "", err instanceof Error ? err.message : "Erreur.");
-    }
+  const handleSaveType = (id: string | number) => {
+    const payload = {
+      name: typeEditForm.name?.trim(),
+      sort_order: Number(typeEditForm.sort_order),
+    };
+    const previousData = types;
+    runWithUndo({
+      message: "Modification effectuée. Annulation possible pendant 3s.",
+      mutate: () =>
+        setTypes((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  name: payload.name ?? t.name,
+                  sort_order: payload.sort_order,
+                }
+              : t,
+          ),
+        ),
+      persist: async () => {
+        await typeService.update(Number(id), payload);
+        await loadTypes();
+      },
+      rollback: () => setTypes(previousData),
+    });
+    setEditingTypeId(null);
   };
 
-  const handleDeleteType = async (id: string | number) => {
+  const handleDeleteType = (id: string | number) => {
     const type = types.find((t) => t.id === id);
     if (
       !type ||
@@ -114,18 +143,47 @@ export default function GabaritsPage() {
     ) {
       return;
     }
+    const previousData = types;
+    runWithUndo({
+      message: "Suppression effectuée. Annulation possible pendant 3s.",
+      mutate: () => setTypes((prev) => prev.filter((t) => t.id !== type.id)),
+      persist: async () => {
+        await typeService.remove(type.id);
+        await loadTypes();
+      },
+      rollback: () => {
+        setTypes(previousData);
+        setSelectedId(type.id);
+      },
+    });
+    if (selectedId === type.id) setSelectedId(null);
+  };
+
+  const handleReorderTypes = async (orderedIds: (string | number)[]) => {
+    if (orderedIds.length !== types.length) return;
+    const idToOrder = new Map(types.map((t) => [t.id, t.sort_order]));
+    const nextTypes = orderedIds
+      .map((id) => types.find((t) => t.id === id))
+      .filter(Boolean)
+      .map((t, i) => ({ ...t, sort_order: i + 1 })) as ObjectType[];
+
+    setTypes(nextTypes);
     try {
-      await typeService.remove(type.id);
-      notify(true, "Type supprimé.", "");
-      if (selectedId === type.id) setSelectedId(null);
-      loadTypes();
+      await Promise.all(
+        nextTypes
+          .filter((t) => idToOrder.get(t.id) !== t.sort_order)
+          .map((t) => typeService.update(t.id, { sort_order: t.sort_order })),
+      );
+      notify(true, "Ordre mis à jour.", "");
+      await loadTypes();
     } catch (err) {
       notify(false, "", err instanceof Error ? err.message : "Erreur.");
+      await loadTypes();
     }
   };
 
   return (
-    <div className="flex flex-col min-h-0 px-4 py-4">
+    <div className="flex flex-col flex-1 min-h-0 px-4 py-4">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Gabarits</h1>
@@ -134,20 +192,7 @@ export default function GabaritsPage() {
             personnalisés.
           </p>
         </div>
-        <button
-          onClick={loadTypes}
-          className="crm-btn-ghost text-xs h-9 w-9 p-0"
-          title="Actualiser"
-        >
-          <Image
-            src="/icons/refresh.webp"
-            alt="Actualiser"
-            width={14}
-            height={14}
-            className="object-contain brightness-0 invert shrink-0"
-            unoptimized
-          />
-        </button>
+        <RefreshButton onRefresh={loadTypes} />
       </div>
 
       <div className="grid grid-cols-1 desktop:grid-cols-[1.1fr_1.6fr] gap-4 desktop:flex-1 desktop:min-h-0">
@@ -196,6 +241,7 @@ export default function GabaritsPage() {
               onSave={handleSaveType}
               onCancel={() => setEditingTypeId(null)}
               onDelete={handleDeleteType}
+              onReorder={handleReorderTypes}
             />
           </div>
         </div>
@@ -206,7 +252,6 @@ export default function GabaritsPage() {
               key={selected.id}
               type={selected}
               onChanged={loadTypes}
-              showToast={showToast}
             />
           ) : (
             <div className="crm-card flex-1 grid place-items-center text-(--text-muted)">
@@ -231,6 +276,7 @@ function TypeList({
   onSave,
   onCancel,
   onDelete,
+  onReorder,
 }: {
   types: ObjectType[];
   selectedId: number | null;
@@ -243,24 +289,28 @@ function TypeList({
   onSave: (id: string | number) => void;
   onCancel: () => void;
   onDelete: (id: string | number) => void;
+  onReorder: (orderedIds: (string | number)[]) => void;
 }) {
   const { searchQuery, setSearchQuery, filteredData } = useSearch(
     types,
     (t, q) => t.name.toLowerCase().includes(q),
   );
-  const { sortField, sortDirection, handleSort } = useSort("name", "asc");
 
-  const sorted = [...filteredData].sort((a, b) =>
-    sortDirection === "asc"
-      ? a.name.localeCompare(b.name, "fr")
-      : b.name.localeCompare(a.name, "fr"),
-  );
+  const handleDrop = (fromId: string | number, toId: string | number) => {
+    const fromIndex = filteredData.findIndex((t) => t.id === fromId);
+    const toIndex = filteredData.findIndex((t) => t.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    const next = [...filteredData];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    onReorder(next.map((t) => t.id));
+  };
 
   const columns: Column<ObjectType>[] = [
     {
       field: "name",
       label: "Type d'objet",
-      sortable: true,
+      sortable: false,
       className: "w-[45%]",
       render: (item) => (
         <button
@@ -315,7 +365,7 @@ function TypeList({
         />
       </div>
       <DataTable<ObjectType>
-        data={sorted}
+        data={filteredData}
         columns={columns}
         keyExtractor={(item) => item.id}
         editingId={editingTypeId}
@@ -325,9 +375,10 @@ function TypeList({
         onSave={onSave}
         onCancel={onCancel}
         onDelete={onDelete}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSort={handleSort}
+        onReorder={searchQuery ? undefined : handleDrop}
+        rowClassName={(item) =>
+          selectedId === item.id ? "bg-accent/15" : ""
+        }
         isLoading={isLoading}
         emptyMessage="Aucun type."
       />
@@ -338,12 +389,13 @@ function TypeList({
 function FieldEditor({
   type,
   onChanged,
-  showToast,
 }: {
   type: ObjectType;
   onChanged: () => Promise<void>;
-  showToast: (msg: string, type: "success" | "error") => void;
 }) {
+  const { showToast } = useToast();
+  const { undoAction, setUndoAction, runWithUndo } = useUndo();
+  const [fields, setFields] = useState<ObjectField[]>(type.fields);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editForm, setEditForm] = useState<
     Partial<ObjectField> & {
@@ -364,8 +416,24 @@ function FieldEditor({
     input_type: "text",
     optionsText: "",
     is_required: false,
-    sort_order: type.fields.length,
+    sort_order: type.fields.length + 1,
   });
+
+  useEffect(() => {
+    setFields(type.fields);
+  }, [type.fields]);
+
+  useEffect(() => {
+    if (undoAction) {
+      showToast(
+        undoAction.message,
+        "undo",
+        undoAction.duration,
+        undoAction.onUndo,
+      );
+      setUndoAction(null);
+    }
+  }, [undoAction, setUndoAction, showToast]);
 
   const notify = (ok: boolean, okMsg: string, errMsg: string) => {
     if (ok) showToast(okMsg, "success");
@@ -413,7 +481,7 @@ function FieldEditor({
         input_type: "text",
         optionsText: "",
         is_required: false,
-        sort_order: type.fields.length + 1,
+        sort_order: type.fields.length + 2,
       });
       await onChanged();
     } catch (err) {
@@ -421,36 +489,90 @@ function FieldEditor({
     }
   };
 
-  const handleSaveField = async () => {
+  const handleSaveField = () => {
+    const id = Number(editingId);
     const options =
       editForm.input_type === "select"
         ? parseOptions(editForm.optionsText || "")
         : undefined;
-    try {
-      await fieldService.update(Number(editingId), {
-        label: editForm.label,
-        field_key: editForm.field_key,
-        input_type: editForm.input_type,
-        options,
-        is_required: editForm.is_required,
-        sort_order: Number(editForm.sort_order),
-      });
-      setEditingId(null);
-      notify(true, "Champ mis à jour.", "");
-      await onChanged();
-    } catch (err) {
-      notify(false, "", err instanceof Error ? err.message : "Erreur.");
-    }
+    const payload = {
+      label: editForm.label,
+      field_key: editForm.field_key,
+      input_type: editForm.input_type,
+      options,
+      is_required: editForm.is_required,
+      sort_order: Number(editForm.sort_order),
+    };
+    const previousData = fields;
+    runWithUndo({
+      message: "Modification effectuée. Annulation possible pendant 3s.",
+      mutate: () =>
+        setFields((prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  label: payload.label ?? f.label,
+                  field_key: payload.field_key ?? f.field_key,
+                  input_type: payload.input_type ?? f.input_type,
+                  options: payload.options === undefined ? f.options : payload.options,
+                  is_required: payload.is_required ?? f.is_required,
+                  sort_order: payload.sort_order,
+                }
+              : f,
+          ),
+        ),
+      persist: async () => {
+        await fieldService.update(id, payload);
+        await onChanged();
+      },
+      rollback: () => setFields(previousData),
+    });
+    setEditingId(null);
   };
 
-  const handleDeleteField = async (id: number | string) => {
-    if (!window.confirm("Supprimer ce champ du gabarit ?")) return;
+  const handleDeleteField = (id: string | number) => {
+    const previousData = fields;
+    runWithUndo({
+      message: "Suppression effectuée. Annulation possible pendant 3s.",
+      mutate: () =>
+        setFields((prev) => prev.filter((f) => f.id !== id)),
+      persist: async () => {
+        await fieldService.remove(Number(id));
+        await onChanged();
+      },
+      rollback: () => setFields(previousData),
+    });
+  };
+
+  const handleReorderFields = async (
+    fromId: string | number,
+    toId: string | number,
+  ) => {
+    const fromIndex = fields.findIndex((f) => f.id === fromId);
+    const toIndex = fields.findIndex((f) => f.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    const reordered = [...fields];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    const nextFields = reordered.map((f, i) => ({
+      ...f,
+      sort_order: i + 1,
+    }));
+    const idToOrder = new Map(fields.map((f) => [f.id, f.sort_order]));
+
+    setFields(nextFields);
     try {
-      await fieldService.remove(Number(id));
-      notify(true, "Champ supprimé.", "");
+      await Promise.all(
+        nextFields
+          .filter((f) => idToOrder.get(f.id) !== f.sort_order)
+          .map((f) => fieldService.update(f.id, { sort_order: f.sort_order })),
+      );
+      notify(true, "Ordre mis à jour.", "");
       await onChanged();
     } catch (err) {
       notify(false, "", err instanceof Error ? err.message : "Erreur.");
+      setFields(type.fields);
     }
   };
 
@@ -584,23 +706,7 @@ function FieldEditor({
             {type.fields.filter((f) => f.is_required).length} requis)
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onChanged}
-            className="crm-btn-ghost text-xs h-9 w-9 p-0"
-            title="Actualiser"
-          >
-            <Image
-              src="/icons/refresh.webp"
-              alt="Actualiser"
-              width={14}
-              height={14}
-              className="object-contain brightness-0 invert shrink-0"
-              unoptimized
-            />
-          </button>
-        </div>
+        <RefreshButton onRefresh={onChanged} />
       </div>
 
       <form
@@ -711,7 +817,7 @@ function FieldEditor({
 
       <div className="flex-1 min-h-0 crm-card p-0 overflow-hidden flex">
         <DataTable<ObjectField>
-          data={type.fields}
+          data={fields}
           columns={columns}
           keyExtractor={(item) => item.id}
           editingId={editingId}
@@ -727,6 +833,7 @@ function FieldEditor({
           onSave={() => handleSaveField()}
           onCancel={() => setEditingId(null)}
           onDelete={(id) => handleDeleteField(id)}
+          onReorder={handleReorderFields}
           emptyMessage="Aucun champ défini. Ajoutes-en un avec le formulaire."
         />
       </div>

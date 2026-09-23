@@ -83,17 +83,48 @@ export const updateType = async (
   id: number,
   data: { name?: string; sort_order?: number },
 ): Promise<void> => {
+  const conn = await pool.getConnection();
   try {
-    const [result]: any = await pool.query(
+    await conn.beginTransaction();
+
+    const [typeRows]: any = await conn.query(
+      "SELECT id, sort_order FROM object_types WHERE id = ? FOR UPDATE",
+      [id],
+    );
+    const current = typeRows[0];
+    if (!current) {
+      throw new AppError("Type d'objet introuvable.", 404);
+    }
+
+    if (
+      data.sort_order !== undefined &&
+      data.sort_order !== current.sort_order
+    ) {
+      const [otherRows]: any = await conn.query(
+        "SELECT id, sort_order FROM object_types WHERE sort_order = ? AND id != ? FOR UPDATE",
+        [data.sort_order, id],
+      );
+      if (otherRows.length > 0) {
+        const other = otherRows[0];
+        await conn.query(
+          "UPDATE object_types SET sort_order = ? WHERE id = ?",
+          [current.sort_order, other.id],
+        );
+      }
+    }
+
+    await conn.query(
       "UPDATE object_types SET name = COALESCE(?, name), sort_order = COALESCE(?, sort_order) WHERE id = ?",
       [data.name?.trim(), data.sort_order, id],
     );
-    if (result.affectedRows === 0) {
-      throw new AppError("Type d'objet introuvable.", 404);
-    }
+
+    await conn.commit();
   } catch (error: any) {
+    await conn.rollback().catch(() => {});
     if (error instanceof AppError) throw error;
     throw handleDatabaseError(error);
+  } finally {
+    conn.release();
   }
 };
 

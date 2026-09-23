@@ -94,6 +94,8 @@ export interface DataTableProps<T> {
   onDelete: (id: string | number) => void;
   hideEdit?: boolean;
   isDeletable?: (item: T) => boolean;
+  rowClassName?: (item: T) => string;
+  onReorder?: (fromId: string | number, toId: string | number) => void;
   sortField?: string;
   sortDirection?: "asc" | "desc";
   onSort?: (field: string) => void;

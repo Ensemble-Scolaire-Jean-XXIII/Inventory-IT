@@ -57,14 +57,44 @@ export const updateField = async (
     sort_order?: number;
   },
 ): Promise<void> => {
+  const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
+
+    const [fieldRows]: any = await conn.query(
+      "SELECT id, object_type_id, sort_order FROM object_fields WHERE id = ? FOR UPDATE",
+      [id],
+    );
+    const current = fieldRows[0];
+    if (!current) {
+      throw new AppError("Champ introuvable.", 404);
+    }
+
     const options =
       data.input_type === "select" && data.options
         ? JSON.stringify(data.options)
         : data.input_type
           ? null
           : undefined;
-    const [result]: any = await pool.query(
+
+    if (
+      data.sort_order !== undefined &&
+      data.sort_order !== current.sort_order
+    ) {
+      const [otherRows]: any = await conn.query(
+        "SELECT id, sort_order FROM object_fields WHERE object_type_id = ? AND sort_order = ? AND id != ? FOR UPDATE",
+        [current.object_type_id, data.sort_order, id],
+      );
+      if (otherRows.length > 0) {
+        const other = otherRows[0];
+        await conn.query(
+          "UPDATE object_fields SET sort_order = ? WHERE id = ?",
+          [current.sort_order, other.id],
+        );
+      }
+    }
+
+    await conn.query(
       "UPDATE object_fields SET label = COALESCE(?, label), field_key = COALESCE(?, field_key), input_type = COALESCE(?, input_type), options = COALESCE(?, options), is_required = COALESCE(?, is_required), sort_order = COALESCE(?, sort_order) WHERE id = ?",
       [
         data.label?.trim(),
@@ -76,12 +106,14 @@ export const updateField = async (
         id,
       ],
     );
-    if (result.affectedRows === 0) {
-      throw new AppError("Champ introuvable.", 404);
-    }
+
+    await conn.commit();
   } catch (error: any) {
+    await conn.rollback().catch(() => {});
     if (error instanceof AppError) throw error;
     throw handleDatabaseError(error);
+  } finally {
+    conn.release();
   }
 };
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { CreateObjectPayload } from "./types/models";
 import { useInventory } from "./hooks/useInventory";
 import { useToast } from "./contexts/ToastContext";
 import TypePanel from "./components/TypePanel";
+import RefreshButton from "./components/RefreshButton";
 
 export default function HomePage() {
   const inventory = useInventory();
@@ -28,6 +28,18 @@ export default function HomePage() {
       inventory.setError("");
     }
   }, [inventory.error, inventory.setError, showToast]);
+
+  useEffect(() => {
+    if (inventory.undoAction) {
+      showToast(
+        inventory.undoAction.message,
+        "undo",
+        inventory.undoAction.duration,
+        inventory.undoAction.onUndo,
+      );
+      inventory.setUndoAction(null);
+    }
+  }, [inventory.undoAction, inventory.setUndoAction, showToast]);
 
   useEffect(() => {
     if (inventory.types.length === 0 || !scrollAreaRef.current) return;
@@ -79,23 +91,13 @@ export default function HomePage() {
     id: number,
     payload: { name?: string; data?: Record<string, unknown> },
   ) => {
-    const res = await inventory.updateObject(id, payload);
-    if (res.success) {
-      showToast("Objet mis à jour.", "success");
-      return true;
-    }
-    showToast(res.error || "Erreur de modification.", "error");
-    return false;
+    inventory.updateObjectWithUndo(id, payload);
+    return true;
   };
 
   const handleDelete = async (id: number) => {
-    const res = await inventory.deleteObject(id);
-    if (res.success) {
-      showToast("Objet supprimé.", "success");
-      return true;
-    }
-    showToast(res.error || "Erreur de suppression.", "error");
-    return false;
+    inventory.deleteObjectWithUndo(id);
+    return true;
   };
 
   if (inventory.isLoading && inventory.types.length === 0) {
@@ -149,20 +151,7 @@ export default function HomePage() {
             <span className="text-xs text-(--text-muted) whitespace-nowrap">
               {inventory.objects.length} objets au total
             </span>
-            <button
-              onClick={() => inventory.load()}
-              className="crm-btn-ghost text-xs h-9 w-9 p-0"
-              title="Actualiser"
-            >
-              <Image
-                src="/icons/refresh.webp"
-                alt="Actualiser"
-                width={14}
-                height={14}
-                className="object-contain brightness-0 invert shrink-0"
-                unoptimized
-              />
-            </button>
+            <RefreshButton onRefresh={() => inventory.load()} />
           </div>
         </div>
       </div>

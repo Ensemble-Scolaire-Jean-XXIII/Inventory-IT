@@ -110,6 +110,15 @@ Toutes les routes sauf `/api/auth/login` exigent le header
 - Erreurs imprévues : 500 « Erreur interne de la base de données. » sans fuite de
   détail vers le client.
 
+### Ordre non duplicable
+
+`PUT /api/types/:id` et `PUT /api/fields/:id` interdisent les doublons de
+`sort_order` :
+- le nouvel ordre est lu en **transaction** (`FOR UPDATE`) ;
+- si un autre enregistrement occupe déjà cet ordre, les deux **échangent** leurs
+  valeurs (l'occupant reçoit l'ancien ordre de l'enregistrement modifié) ;
+- aucune mise à jour d'ordre ne peut donc produire de collision.
+
 ## 4. Frontend
 
 ### Pages
@@ -126,27 +135,44 @@ flowchart LR
 - **`/`** — inventaire : un panneau par type (DataTable + graphiques SVG maison
   réactifs à la recherche), barre d'onglets fixe hors du conteneur de scroll,
   en-têtes de colonnes sticky dans chaque DataTable, rechargement au focus,
-  édition inline (récupération du champ MAC via le double-clic).
+  édition inline (récupération du champ MAC via le double-clic). La modification
+  et la suppression d'un objet sont **optimistes** : appliquées à l'écran puis
+  persistées après 3 s, avec toast « Annuler » (temps de rétractation).
 - **`/connexion`** — connexion (e-mail + mot de passe + JWT). Les comptes sont
   créés depuis `/utilisateurs` ou via le script `backend/scripts/add-user.ts`
   exécuté dans le conteneur backend (`docker exec`).
 - **`/utilisateurs`** — création et liste des comptes (prénom, nom, e-mail,
-  DataTable avec recherche et tri) : `POST /api/users` génère un mot de passe
-  temporaire qui est envoyé par e-mail (SMTP) ou renvoyé dans la réponse si
-  SMTP est absent ; suppression avec confirmation, auto-suppression bloquée
-  côté API.
+  DataTable avec recherche et tri, skeleton pendant le chargement) : `POST /api/users`
+  génère un mot de passe temporaire qui est envoyé par e-mail (SMTP) ou renvoyé
+  dans la réponse si SMTP est absent ; suppression avec confirmation,
+  auto-suppression bloquée côté API.
 - **`/gabarits`** — gestion des types et de leurs champs (création, renommage,
-  suppression, réordonnancement).
+  suppression avec rétractation, réordonnancement). Le tri par `sort_order` est
+  géré en **drag & drop** (lignes déplaçables) ou en saisie directe (échange
+  automatique en cas de doublon côté API). Un simple clic sur une ligne sélectionne
+  le type (ligne surlignée). La page a une **hauteur fixe sur desktop** : les
+  listes défilent en interne (en-têtes sticky), sans scroller la page entière.
 - **`/profil`** — compte connecté : modification de l'e-mail et du mot de passe
   (change l'e-mail via `PUT /api/auth/profile`, le mot de passe via
   `PUT /api/auth/password`).
 
 ### État
 
-- `useInventory` charge `types` + `objects` et expose les opérations CRUD avec
-  rechargement après mutation.
+- `useInventory` charge `types` + `objects` et expose les opérations CRUD
+  (création immédiate ; modification/suppression **optimistes**) avec
+  rechargement après persistance.
+- `useUndo` : machine d'annulation partagée (snapshot, mutation optimiste,
+  persistance différée 3 s, rollback au clic « Annuler » ou en cas d'échec API).
 - `useSearch` / `useSort` partagés entre les panneaux (filtre par objet, colonne,
   type).
+- `RefreshButton` : bouton d'actualisation avec rotation de l'icône pendant et
+  après le chargement (composant réutilisé sur `/`, `/gabarits`, `/utilisateurs`).
+- `DataTable` générique : scroll interne avec en-têtes sticky, skeleton de
+  chargement (`TableSkeleton`), surlignage de ligne (`rowClassName` via callback)
+  et **réordonnancement par drag & drop** (`onReorder`) quand les lignes sont
+  déplaçables.
+- `LayoutWrapper` : fil d'Ariane sous le header (`Accueil / <page active>`) et
+  bouton de navigation actif surligné (accent).
 - 401 → suppression du token + redirection `/connexion` ; exception : une erreur
   401 de login (pas de token stocké) est remontée telle quelle.
 
@@ -154,6 +180,10 @@ flowchart LR
 
 - `docker-compose.prod.yml` utilise le réseau externe `proxy-net` et une image
   frontend standalone (Next.js `output: standalone`).
+- `Dockerfile.prod` (frontend et backend) : multi-stage `deps` → `builder` →
+  `runner`, `npm ci` en cache layer, image d'exécution légère (frontend :
+  `node server.js` standalone ; backend : `node dist/server.js` après
+  `tsc` + `npm prune --omit=dev`).
 - Workflow GitHub `.github/workflows/deploy.yml` : build dist + compose up sur le
   VPS (`/home/jeanxxiii-apps/inventory-it`, runner self-hosted).
 - Variables attendues côté prod : `NEXT_PUBLIC_API_URL`, `MYSQL_*`, `JWT_SECRET`,

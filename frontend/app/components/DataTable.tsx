@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { DataTableProps } from "../types/models";
 import { displayValue } from "../lib/format";
+import { TableSkeleton } from "./Skeleton";
 
 const Button = ({
   onClick,
@@ -50,12 +52,15 @@ export default function DataTable<T>({
   onDelete,
   hideEdit = false,
   isDeletable = () => true,
+  rowClassName,
+  onReorder,
   sortField,
   sortDirection,
   onSort,
   isLoading = false,
   emptyMessage = "Aucun résultat trouvé.",
 }: DataTableProps<T>) {
+  const [dragId, setDragId] = useState<string | number | null>(null);
   const roundedCornerTopLeft =
     "rounded-tl-[calc(var(--radius-box)/1.5)]";
   const roundedCornerTopRight =
@@ -108,7 +113,7 @@ export default function DataTable<T>({
   const totalColumns = columns.length + 1;
 
   return (
-    <div className="flex flex-col min-h-0 h-full">
+    <div className="flex flex-col min-h-0 h-full overflow-y-auto custom-scrollbar">
       <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
           <thead>
             <tr>
@@ -145,11 +150,7 @@ export default function DataTable<T>({
           </thead>
           <tbody className="text-(--text-main)">
             {isLoading ? (
-              <tr>
-                <td colSpan={totalColumns} className="p-6 text-center opacity-60">
-                  Chargement…
-                </td>
-              </tr>
+              <TableSkeleton columns={totalColumns} rows={10} />
             ) : data.length === 0 ? (
               <tr>
                 <td
@@ -163,11 +164,49 @@ export default function DataTable<T>({
               data.map((item, rowIndex) => {
                 const id = keyExtractor(item);
                 const isEditing = editingId === id;
+                const draggable = Boolean(onReorder) && !isEditing;
                 return (
                   <tr
                     key={id}
+                    draggable={draggable}
+                    onDragStart={
+                      draggable
+                        ? (e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            setDragId(id);
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      draggable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      draggable
+                        ? (e) => {
+                            e.preventDefault();
+                            if (onReorder && dragId !== null && dragId !== id) {
+                              onReorder(dragId, id);
+                            }
+                            setDragId(null);
+                          }
+                        : undefined
+                    }
+                    onDragEnd={
+                      draggable ? () => setDragId(null) : undefined
+                    }
                     className={`group border-b border-(--border-color) hover:bg-white/5 transition-colors ${
                       isEditing ? "bg-white/5" : ""
+                    } ${
+                      draggable
+                        ? "cursor-grab active:cursor-grabbing"
+                        : ""
+                    } ${rowClassName ? rowClassName(item) : ""} ${
+                      dragId === id ? "opacity-50" : ""
                     }`}
                   >
                     {columns.map((col, i) => (

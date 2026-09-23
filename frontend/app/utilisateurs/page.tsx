@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { User, Column } from "../types/models";
 import DataTable from "../components/DataTable";
+import RefreshButton from "../components/RefreshButton";
 import { userService } from "../services/userService";
 import { useAuth } from "../contexts/AuthContext";
 import { useSearch } from "../hooks/useSearch";
@@ -177,20 +178,7 @@ export default function UtilisateursPage() {
             passe temporaire.
           </p>
         </div>
-        <button
-          onClick={loadUsers}
-          className="crm-btn-ghost text-xs h-9 w-9 p-0"
-          title="Actualiser"
-        >
-          <Image
-            src="/icons/refresh.webp"
-            alt="Actualiser"
-            width={14}
-            height={14}
-            className="object-contain brightness-0 invert shrink-0"
-            unoptimized
-          />
-        </button>
+        <RefreshButton onRefresh={loadUsers} />
       </div>
 
       <form
