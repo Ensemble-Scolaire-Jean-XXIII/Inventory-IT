@@ -81,6 +81,45 @@ router.post("/:id/fields", async (req, res, next) => {
   }
 });
 
+router.put("/:id/fields/reorder", async (req, res, next) => {
+  try {
+    const typeId = Number(req.params.id);
+    const { ids } = req.body as { ids?: unknown };
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      !ids.every((v) => typeof v === "number")
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Une liste d'identifiants est requise." });
+    }
+    await objectFieldService.reorderFields(typeId, ids as number[]);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/reorder", async (req, res, next) => {
+  try {
+    const { ids } = req.body as { ids?: unknown };
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      !ids.every((v) => typeof v === "number")
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Une liste d'identifiants est requise." });
+    }
+    await objectTypeService.reorderTypes(ids as number[]);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put("/:id", async (req, res, next) => {
   try {
     const { name, sort_order } = req.body as {

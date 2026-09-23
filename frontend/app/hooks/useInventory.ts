@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { objectService } from "../services/objectService";
 import { typeService } from "../services/typeService";
+import { UndoAction } from "./useUndo";
 import {
   ObjectType,
   InventoryObject,
@@ -13,8 +14,10 @@ export function useInventory() {
   const [objects, setObjects] = useState<InventoryObject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
   const load = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [typeRes, objectRes] = await Promise.all([
         typeService.getAll(),
@@ -96,6 +99,74 @@ export function useInventory() {
     [load],
   );
 
+  const updateObjectWithUndo = useCallback(
+    (id: number, payload: UpdateObjectPayload, duration = 3000) => {
+      const previousData = objects;
+      setObjects((prev) =>
+        prev.map((obj) =>
+          obj.id === id
+            ? {
+                ...obj,
+                name: payload.name ?? obj.name,
+                data: { ...(obj.data || {}), ...(payload.data || {}) },
+              }
+            : obj,
+        ),
+      );
+
+      const timerId = setTimeout(async () => {
+        try {
+          await objectService.update(id, payload);
+          await load();
+        } catch {
+          setObjects(previousData);
+        }
+        setUndoAction(null);
+      }, duration);
+
+      setUndoAction({
+        message: "Modification effectuée. Annulation possible pendant 3s.",
+        duration,
+        timerId,
+        onUndo: () => {
+          clearTimeout(timerId);
+          setObjects(previousData);
+          setUndoAction(null);
+        },
+      });
+    },
+    [objects, load],
+  );
+
+  const deleteObjectWithUndo = useCallback(
+    (id: number, duration = 3000) => {
+      const previousData = objects;
+      setObjects((prev) => prev.filter((obj) => obj.id !== id));
+
+      const timerId = setTimeout(async () => {
+        try {
+          await objectService.remove(id);
+          await load();
+        } catch {
+          setObjects(previousData);
+        }
+        setUndoAction(null);
+      }, duration);
+
+      setUndoAction({
+        message: "Suppression effectuée. Annulation possible pendant 3s.",
+        duration,
+        timerId,
+        onUndo: () => {
+          clearTimeout(timerId);
+          setObjects(previousData);
+          setUndoAction(null);
+        },
+      });
+    },
+    [objects, load],
+  );
+
   return {
     types,
     objects,
@@ -107,5 +178,9 @@ export function useInventory() {
     addObject,
     updateObject,
     deleteObject,
+    updateObjectWithUndo,
+    deleteObjectWithUndo,
+    undoAction,
+    setUndoAction,
   };
 }

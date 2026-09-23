@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { DataTableProps } from "../types/models";
 import { displayValue } from "../lib/format";
+import { TableSkeleton } from "./Skeleton";
 
 const Button = ({
   onClick,
@@ -11,7 +13,7 @@ const Button = ({
   icon,
   children,
 }: {
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   title: string;
   className: string;
   icon?: string;
@@ -50,12 +52,22 @@ export default function DataTable<T>({
   onDelete,
   hideEdit = false,
   isDeletable = () => true,
+  actionsHeader,
+  rowClassName,
+  onRowClick,
+  onReorder,
   sortField,
   sortDirection,
   onSort,
   isLoading = false,
   emptyMessage = "Aucun résultat trouvé.",
+  className = "",
 }: DataTableProps<T>) {
+  const [dragId, setDragId] = useState<string | number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    id: string | number;
+    position: "before" | "after";
+  } | null>(null);
   const roundedCornerTopLeft =
     "rounded-tl-[calc(var(--radius-box)/1.5)]";
   const roundedCornerTopRight =
@@ -69,13 +81,19 @@ export default function DataTable<T>({
       return (
         <div className="flex gap-1.5 justify-end">
           <Button
-            onClick={() => onSave(id, editForm)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave(id, editForm);
+            }}
             title="Enregistrer"
             className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30"
             icon="/icons/approved.webp"
           />
           <Button
-            onClick={onCancel}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
             title="Annuler"
             className="bg-white/5 border border-(--border-color) text-(--text-main) hover:bg-white/10"
             icon="/icons/cancel.webp"
@@ -87,7 +105,10 @@ export default function DataTable<T>({
       <div className="flex gap-1.5 justify-end opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-200">
         {!hideEdit && (
           <Button
-            onClick={() => onEdit(item)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(item);
+            }}
             title="Modifier"
             className="bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30"
             icon="/icons/edit.webp"
@@ -95,7 +116,10 @@ export default function DataTable<T>({
         )}
         {isDeletable(item) && (
           <Button
-            onClick={() => onDelete(id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(id);
+            }}
             title="Supprimer"
             className="bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30"
             icon="/icons/trash.webp"
@@ -108,7 +132,9 @@ export default function DataTable<T>({
   const totalColumns = columns.length + 1;
 
   return (
-    <div className="flex flex-col min-h-0 h-full">
+    <div
+      className={`flex flex-col min-h-0 h-full overflow-y-auto custom-scrollbar ${className}`}
+    >
       <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
           <thead>
             <tr>
@@ -138,18 +164,16 @@ export default function DataTable<T>({
                   )}
                 </th>
               ))}
-              <th className={`sticky top-0 z-10 px-3 py-3 font-semibold text-right bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) w-24 ${roundedCornerTopRight}`}>
-                Actions
-              </th>
+<th className={`sticky top-0 z-10 px-3 py-3 font-semibold bg-(--bg-table-header) text-(--text-main) border-b border-(--border-color) ${
+                    actionsHeader ? "text-left w-40" : "text-right w-24"
+                  } ${roundedCornerTopRight}`}>
+                  {actionsHeader ?? "Actions"}
+                </th>
             </tr>
           </thead>
           <tbody className="text-(--text-main)">
             {isLoading ? (
-              <tr>
-                <td colSpan={totalColumns} className="p-6 text-center opacity-60">
-                  Chargement…
-                </td>
-              </tr>
+              <TableSkeleton columns={totalColumns} rows={10} />
             ) : data.length === 0 ? (
               <tr>
                 <td
@@ -163,17 +187,89 @@ export default function DataTable<T>({
               data.map((item, rowIndex) => {
                 const id = keyExtractor(item);
                 const isEditing = editingId === id;
+                const draggable = Boolean(onReorder) && !isEditing;
                 return (
                   <tr
                     key={id}
+                    draggable={draggable}
+                    onDragStart={
+                      draggable
+                        ? (e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            setDragId(id);
+                            setDropTarget(null);
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      draggable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setDropTarget({
+                              id,
+                              position:
+                                e.clientY < rect.top + rect.height / 2
+                                  ? "before"
+                                  : "after",
+                            });
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      draggable
+                        ? (e) => {
+                            e.preventDefault();
+                            if (onReorder && dragId !== null && dragId !== id) {
+                              onReorder(dragId, id);
+                            }
+                            setDragId(null);
+                            setDropTarget(null);
+                          }
+                        : undefined
+                    }
+                    onDragEnd={
+                      draggable
+                        ? () => {
+                            setDragId(null);
+                            setDropTarget(null);
+                          }
+                        : undefined
+                    }
+                    onClick={
+                      onRowClick && !isEditing
+                        ? (e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button, a, input, select, textarea, label")) {
+                              return;
+                            }
+                            onRowClick(item);
+                          }
+                        : undefined
+                    }
                     className={`group border-b border-(--border-color) hover:bg-white/5 transition-colors ${
                       isEditing ? "bg-white/5" : ""
+                    } ${
+                      draggable
+                        ? "cursor-grab active:cursor-grabbing"
+                        : onRowClick
+                          ? "cursor-pointer"
+                          : ""
+                    } ${rowClassName ? rowClassName(item) : ""} ${
+                      dragId === id ? "opacity-50" : ""
                     }`}
                   >
                     {columns.map((col, i) => (
                       <td
                         key={i}
                         className={`px-3 py-3 truncate ${
+                          dropTarget?.id === id
+                            ? dropTarget.position === "before"
+                              ? "drop-before"
+                              : "drop-after"
+                            : ""
+                        } ${
                           isEditing ? "" : col.className || ""
                         } ${
                           rowIndex === data.length - 1 && i === 0
@@ -194,6 +290,12 @@ export default function DataTable<T>({
                     ))}
                     <td
                       className={`px-3 py-3 text-right ${
+                        dropTarget?.id === id
+                          ? dropTarget.position === "before"
+                            ? "drop-before"
+                            : "drop-after"
+                          : ""
+                      } ${
                         rowIndex === data.length - 1
                           ? roundedCornerBottomRight
                           : ""

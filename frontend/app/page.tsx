@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { CreateObjectPayload } from "./types/models";
 import { useInventory } from "./hooks/useInventory";
 import { useToast } from "./contexts/ToastContext";
 import TypePanel from "./components/TypePanel";
+import RefreshButton from "./components/RefreshButton";
+import Skeleton, { TableSkeleton } from "./components/Skeleton";
 
 export default function HomePage() {
   const inventory = useInventory();
@@ -30,6 +31,18 @@ export default function HomePage() {
   }, [inventory.error, inventory.setError, showToast]);
 
   useEffect(() => {
+    if (inventory.undoAction) {
+      showToast(
+        inventory.undoAction.message,
+        "undo",
+        inventory.undoAction.duration,
+        inventory.undoAction.onUndo,
+      );
+      inventory.setUndoAction(null);
+    }
+  }, [inventory.undoAction, inventory.setUndoAction, showToast]);
+
+  useEffect(() => {
     if (inventory.types.length === 0 || !scrollAreaRef.current) return;
 
     if (observerRef.current) observerRef.current.disconnect();
@@ -37,9 +50,10 @@ export default function HomePage() {
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0] as
-          | IntersectionObserverEntry
-          | undefined;
+          .sort(
+            (a, b) =>
+              a.boundingClientRect.top - b.boundingClientRect.top,
+          )[0] as IntersectionObserverEntry | undefined;
         if (visible) {
           const id = Number((visible.target as HTMLElement).dataset.typeId);
           if (!Number.isNaN(id)) setActiveTypeId(id);
@@ -56,6 +70,7 @@ export default function HomePage() {
   }, [inventory.types]);
 
   const scrollToPanel = (id: number) => {
+    setActiveTypeId(id);
     document
       .getElementById(`panel-${id}`)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -79,31 +94,17 @@ export default function HomePage() {
     id: number,
     payload: { name?: string; data?: Record<string, unknown> },
   ) => {
-    const res = await inventory.updateObject(id, payload);
-    if (res.success) {
-      showToast("Objet mis à jour.", "success");
-      return true;
-    }
-    showToast(res.error || "Erreur de modification.", "error");
-    return false;
+    inventory.updateObjectWithUndo(id, payload);
+    return true;
   };
 
   const handleDelete = async (id: number) => {
-    const res = await inventory.deleteObject(id);
-    if (res.success) {
-      showToast("Objet supprimé.", "success");
-      return true;
-    }
-    showToast(res.error || "Erreur de suppression.", "error");
-    return false;
+    inventory.deleteObjectWithUndo(id);
+    return true;
   };
 
   if (inventory.isLoading && inventory.types.length === 0) {
-    return (
-      <div className="flex-1 grid place-items-center text-(--text-muted)">
-        Chargement de l'inventaire…
-      </div>
-    );
+    return <InventorySkeleton />;
   }
 
   if (inventory.types.length === 0 && !inventory.isLoading) {
@@ -149,20 +150,7 @@ export default function HomePage() {
             <span className="text-xs text-(--text-muted) whitespace-nowrap">
               {inventory.objects.length} objets au total
             </span>
-            <button
-              onClick={() => inventory.load()}
-              className="crm-btn-ghost text-xs h-9 w-9 p-0"
-              title="Actualiser"
-            >
-              <Image
-                src="/icons/refresh.webp"
-                alt="Actualiser"
-                width={14}
-                height={14}
-                className="object-contain brightness-0 invert shrink-0"
-                unoptimized
-              />
-            </button>
+            <RefreshButton onRefresh={() => inventory.load()} />
           </div>
         </div>
       </div>
@@ -176,11 +164,81 @@ export default function HomePage() {
             key={type.id}
             type={type}
             rows={inventory.objectsByType[type.id] || []}
+            isLoading={inventory.isLoading}
             onAdd={handleAdd}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PanelSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 shrink-0">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Skeleton className="h-6 w-44" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <div className="ml-auto flex items-center gap-2">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+      </div>
+      <div className="flex flex-col desktop:flex-row gap-3 min-h-0">
+        <div className="flex-1 min-w-0 crm-card p-0 overflow-hidden flex h-[30rem]">
+          <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
+            <thead>
+              <tr>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <th key={i} className="px-3 py-3">
+                    <div
+                      className={`animate-pulse bg-white/10 rounded h-4 ${
+                        i === 0 ? "w-3/4" : "w-full"
+                      }`}
+                    />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <TableSkeleton columns={5} rows={10} />
+            </tbody>
+          </table>
+        </div>
+        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden h-[30rem]">
+          <div className="px-4 pt-3 pb-2 border-b border-(--border-color) space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InventorySkeleton() {
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 border-b border-(--border-color) px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+          <div className="ml-auto">
+            <Skeleton className="h-9 w-9 rounded-lg" />
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-8 py-4 px-4">
+        <PanelSkeleton />
+        <PanelSkeleton />
       </div>
     </div>
   );

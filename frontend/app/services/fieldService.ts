@@ -14,6 +14,9 @@ export const fieldService = {
   ): Promise<unknown> => {
     return api.put(`/fields/${id}`, data);
   },
+  reorder: async (typeId: number, ids: number[]): Promise<unknown> => {
+    return api.put(`/types/${typeId}/fields/reorder`, { ids });
+  },
   remove: async (id: number): Promise<unknown> => {
     return api.delete(`/fields/${id}`);
   },

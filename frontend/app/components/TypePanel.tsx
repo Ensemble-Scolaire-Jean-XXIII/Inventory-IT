@@ -19,6 +19,7 @@ import { displayValue } from "../lib/format";
 interface TypePanelProps {
   type: ObjectType;
   rows: InventoryObject[];
+  isLoading?: boolean;
   onAdd: (payload: CreateObjectPayload) => Promise<boolean>;
   onUpdate: (
     id: number,
@@ -35,6 +36,7 @@ const sortValue = (value: unknown): string | number => {
 export default function TypePanel({
   type,
   rows,
+  isLoading = false,
   onAdd,
   onUpdate,
   onDelete,
@@ -94,7 +96,6 @@ export default function TypePanel({
   };
 
   const handleDelete = async (id: string | number) => {
-    if (!window.confirm("Supprimer cet objet ?")) return;
     await onDelete(Number(id));
   };
 
@@ -177,7 +178,7 @@ export default function TypePanel({
       )}
 
       <div className="flex flex-col desktop:flex-row gap-3 min-h-0 desktop:flex-1">
-        <div className="flex-1 min-w-0 crm-card p-0 flex">
+        <div className="flex-1 min-w-0 crm-card p-0 flex h-120">
           <DataTable
             data={sortedRows}
             columns={columns}
@@ -195,12 +196,12 @@ export default function TypePanel({
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={handleSort}
-            isLoading={false}
+            isLoading={isLoading}
             emptyMessage={`Aucun ${type.name.toLowerCase()} trouvé.`}
           />
         </div>
 
-        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden desktop:h-fit desktop:sticky desktop:top-0">
+        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden h-120 desktop:h-120">
           <div className="px-4 pt-3 border-b border-(--border-color)">
             <h3 className="text-sm font-bold uppercase tracking-wider text-(--text-muted)">
               Statistiques
