@@ -108,7 +108,6 @@ export default function GabaritsPage() {
   const handleSaveType = (id: string | number) => {
     const payload = {
       name: typeEditForm.name?.trim(),
-      sort_order: Number(typeEditForm.sort_order),
     };
     const previousData = types;
     runWithUndo({
@@ -120,7 +119,6 @@ export default function GabaritsPage() {
               ? {
                   ...t,
                   name: payload.name ?? t.name,
-                  sort_order: payload.sort_order,
                 }
               : t,
           ),
@@ -162,7 +160,7 @@ export default function GabaritsPage() {
 
   const handleReorderTypes = async (orderedIds: (string | number)[]) => {
     if (orderedIds.length !== types.length) return;
-    const idToOrder = new Map(types.map((t) => [t.id, t.sort_order]));
+    const previousData = types;
     const nextTypes = orderedIds
       .map((id) => types.find((t) => t.id === id))
       .filter(Boolean)
@@ -170,15 +168,12 @@ export default function GabaritsPage() {
 
     setTypes(nextTypes);
     try {
-      await Promise.all(
-        nextTypes
-          .filter((t) => idToOrder.get(t.id) !== t.sort_order)
-          .map((t) => typeService.update(t.id, { sort_order: t.sort_order })),
-      );
+      await typeService.reorder(nextTypes.map((t) => t.id));
       notify(true, "Ordre mis à jour.", "");
       await loadTypes();
     } catch (err) {
       notify(false, "", err instanceof Error ? err.message : "Erreur.");
+      setTypes(previousData);
       await loadTypes();
     }
   };
@@ -308,6 +303,25 @@ function TypeList({
   };
 
   const columns: Column<ObjectType>[] = [
+    ...(searchQuery
+      ? []
+      : [
+          {
+            field: "__drag",
+            label: "",
+            className: "w-8",
+            render: () => (
+              <Image
+                src="/icons/drag.webp"
+                alt=""
+                width={14}
+                height={14}
+                className="object-contain brightness-0 invert opacity-50 mx-auto cursor-grab shrink-0"
+                unoptimized
+              />
+            ),
+          } as Column<ObjectType>,
+        ]),
     {
       field: "name",
       label: "Type d'objet",
@@ -337,14 +351,6 @@ function TypeList({
       label: "Ordre",
       className: "w-16",
       render: (item) => <span>{item.sort_order}</span>,
-      renderEdit: (form, update) => (
-        <input
-          type="number"
-          className="crm-input py-1 px-2 text-xs"
-          value={form.sort_order ?? 0}
-          onChange={(e) => update({ sort_order: Number(e.target.value) })}
-        />
-      ),
     },
     {
       field: "fields",
@@ -410,14 +416,12 @@ function FieldEditor({
     input_type: FieldInputType;
     optionsText: string;
     is_required: boolean;
-    sort_order: number;
   }>({
     label: "",
     field_key: "",
     input_type: "text",
     optionsText: "",
     is_required: false,
-    sort_order: type.fields.length + 1,
   });
 
   useEffect(() => {
@@ -473,7 +477,7 @@ function FieldEditor({
             ? parseOptions(newField.optionsText)
             : undefined,
         is_required: newField.is_required,
-        sort_order: newField.sort_order,
+        sort_order: fields.length + 1,
       });
       notify(true, "Champ ajouté.", "");
       setNewField({
@@ -482,7 +486,6 @@ function FieldEditor({
         input_type: "text",
         optionsText: "",
         is_required: false,
-        sort_order: type.fields.length + 2,
       });
       await onChanged();
     } catch (err) {
@@ -502,7 +505,6 @@ function FieldEditor({
       input_type: editForm.input_type,
       options,
       is_required: editForm.is_required,
-      sort_order: Number(editForm.sort_order),
     };
     const previousData = fields;
     runWithUndo({
@@ -518,7 +520,6 @@ function FieldEditor({
                   input_type: payload.input_type ?? f.input_type,
                   options: payload.options === undefined ? f.options : payload.options,
                   is_required: payload.is_required ?? f.is_required,
-                  sort_order: payload.sort_order,
                 }
               : f,
           ),
@@ -553,6 +554,7 @@ function FieldEditor({
     const fromIndex = fields.findIndex((f) => f.id === fromId);
     const toIndex = fields.findIndex((f) => f.id === toId);
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    const previousFields = fields;
     const reordered = [...fields];
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
@@ -560,24 +562,37 @@ function FieldEditor({
       ...f,
       sort_order: i + 1,
     }));
-    const idToOrder = new Map(fields.map((f) => [f.id, f.sort_order]));
 
     setFields(nextFields);
     try {
-      await Promise.all(
-        nextFields
-          .filter((f) => idToOrder.get(f.id) !== f.sort_order)
-          .map((f) => fieldService.update(f.id, { sort_order: f.sort_order })),
+      await fieldService.reorder(
+        type.id,
+        nextFields.map((f) => f.id),
       );
       notify(true, "Ordre mis à jour.", "");
       await onChanged();
     } catch (err) {
       notify(false, "", err instanceof Error ? err.message : "Erreur.");
-      setFields(type.fields);
+      setFields(previousFields);
     }
   };
 
   const columns: Column<ObjectField>[] = [
+    {
+      field: "__drag",
+      label: "",
+      className: "w-8",
+      render: () => (
+        <Image
+          src="/icons/drag.webp"
+          alt=""
+          width={14}
+          height={14}
+          className="object-contain brightness-0 invert opacity-50 mx-auto cursor-grab shrink-0"
+          unoptimized
+        />
+      ),
+    },
     {
       field: "label",
       label: "Libellé",
@@ -686,14 +701,6 @@ function FieldEditor({
       label: "Ordre",
       className: "w-14",
       render: (item) => <span className="text-xs">{item.sort_order}</span>,
-      renderEdit: (form, update) => (
-        <input
-          type="number"
-          className="crm-input py-1 px-2 text-xs"
-          value={form.sort_order ?? 0}
-          onChange={(e) => update({ sort_order: Number(e.target.value) })}
-        />
-      ),
     },
   ];
 
@@ -760,19 +767,6 @@ function FieldEditor({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs text-(--text-muted) mb-1">
-            Ordre
-          </label>
-          <input
-            type="number"
-            className="crm-input"
-            value={newField.sort_order}
-            onChange={(e) =>
-              setNewField({ ...newField, sort_order: Number(e.target.value) })
-            }
-          />
         </div>
         <div className="flex items-end gap-3 md:col-span-2 desktop:col-span-1">
           <label className="flex items-center gap-2 text-xs text-(--text-muted) cursor-pointer mb-2">

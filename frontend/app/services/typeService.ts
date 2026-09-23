@@ -14,6 +14,9 @@ export const typeService = {
   ): Promise<unknown> => {
     return api.put(`/types/${id}`, data);
   },
+  reorder: async (ids: number[]): Promise<unknown> => {
+    return api.put("/types/reorder", { ids });
+  },
   remove: async (id: number): Promise<unknown> => {
     return api.delete(`/types/${id}`);
   },

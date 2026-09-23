@@ -94,9 +94,11 @@ Toutes les routes sauf `/api/auth/login` exigent le header
 | DELETE  | `/api/users/:id`          | Supprime un compte (auto-suppression refusée) |
 | GET     | `/api/types`              | Types + champs du gabarit                    |
 | POST    | `/api/types`              | Crée un type                                 |
+| PUT     | `/api/types/reorder`      | Réordonne tous les types (`ids` = ordre final) |
 | PUT     | `/api/types/:id`          | Renomme / décrit un type                     |
 | DELETE  | `/api/types/:id`          | Supprime type + objets + gabarit (cascade)   |
 | POST    | `/api/types/:id/fields`   | Ajoute un champ au gabarit                   |
+| PUT     | `/api/types/:id/fields/reorder` | Réordonne les champs du gabarit (`ids` = ordre final) |
 | PUT     | `/api/fields/:id`         | Modifie un champ                             |
 | DELETE  | `/api/fields/:id`         | Supprime un champ                            |
 | GET     | `/api/objects?typeId=`    | Tous les objets (filtrés par type si fourni) |
@@ -110,14 +112,21 @@ Toutes les routes sauf `/api/auth/login` exigent le header
 - Erreurs imprévues : 500 « Erreur interne de la base de données. » sans fuite de
   détail vers le client.
 
-### Ordre non duplicable
+### Ordre et réordonnancement
 
-`PUT /api/types/:id` et `PUT /api/fields/:id` interdisent les doublons de
-`sort_order` :
-- le nouvel ordre est lu en **transaction** (`FOR UPDATE`) ;
-- si un autre enregistrement occupe déjà cet ordre, les deux **échangent** leurs
-  valeurs (l'occupant reçoit l'ancien ordre de l'enregistrement modifié) ;
-- aucune mise à jour d'ordre ne peut donc produire de collision.
+- `sort_order` (types et champs) n'a **pas** de contrainte UNIQUE : les rangs sont
+  libres, l'unicité visuelle vient du réordonnancement global.
+- Dans l'UI, l'ordre ne se modifie **que** par drag & drop (colonne poignée avec
+  `drag.webp`) ; il n'est plus un champ éditable. Un nouveau type/champ reçoit
+  `sort_order = <count> + 1`.
+- `PUT /api/types/reorder` et `PUT /api/types/:id/fields/reorder` appliquent le
+  réordonnancement complet en **une seule transaction** : renumérotation
+  séquentielle `1..n` (n est petit — quelques types, quelques champs). C'est
+  l'approche standard pour ce volume : évite les `UPDATE` en parallèle (le
+  `Promise.all` d'autrefois causait des deadlocks `ER_LOCK_DEADLOCK` sur les roués
+  chevauchés → 500) et reste atomique.
+- `PUT /api/types/:id` et `PUT /api/fields/:id` gardent l'échange anti-doublons
+  (`FOR UPDATE`) pour les usages ponctuels de l'API.
 
 ## 4. Frontend
 
@@ -147,11 +156,13 @@ flowchart LR
   dans la réponse si SMTP est absent ; suppression avec confirmation,
   auto-suppression bloquée côté API.
 - **`/gabarits`** — gestion des types et de leurs champs (création, renommage,
-  suppression avec rétractation, réordonnancement). Le tri par `sort_order` est
-  géré en **drag & drop** (lignes déplaçables) ou en saisie directe (échange
-  automatique en cas de doublon côté API). Un simple clic sur une ligne sélectionne
-  le type (ligne surlignée). La page a une **hauteur fixe sur desktop** : les
-  listes défilent en interne (en-têtes sticky), sans scroller la page entière.
+  suppression avec rétractation). L'ordre est géré **uniquement** en **drag &
+  drop** : une colonne poignée (`drag.webp`) en tête de chaque ligne signale que
+  c'est déplaçable, et le réordonnancement global est poussé en une requête
+  (`/types/reorder`). Un simple clic sur une ligne sélectionne le type (ligne
+  surlignée) ; l'ordre n'est plus modifiable via le formulaire d'édition. La page
+  a une **hauteur fixe sur desktop** : les listes défilent en interne (en-têtes
+  sticky), sans scroller la page entière.
 - **`/profil`** — compte connecté : modification de l'e-mail et du mot de passe
   (change l'e-mail via `PUT /api/auth/profile`, le mot de passe via
   `PUT /api/auth/password`).

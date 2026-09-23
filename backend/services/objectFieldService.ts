@@ -46,6 +46,32 @@ export const addField = async (data: {
   }
 };
 
+export const reorderFields = async (
+  typeId: number,
+  ids: number[],
+): Promise<void> => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (let i = 0; i < ids.length; i++) {
+      const [result]: any = await conn.query(
+        "UPDATE object_fields SET sort_order = ? WHERE id = ? AND object_type_id = ?",
+        [i + 1, ids[i], typeId],
+      );
+      if (result.affectedRows === 0) {
+        throw new AppError("Champ introuvable.", 404);
+      }
+    }
+    await conn.commit();
+  } catch (error: any) {
+    await conn.rollback().catch(() => {});
+    if (error instanceof AppError) throw error;
+    throw handleDatabaseError(error);
+  } finally {
+    conn.release();
+  }
+};
+
 export const updateField = async (
   id: number,
   data: {

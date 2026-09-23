@@ -79,6 +79,29 @@ export const createType = async (
   }
 };
 
+export const reorderTypes = async (ids: number[]): Promise<void> => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (let i = 0; i < ids.length; i++) {
+      const [result]: any = await conn.query(
+        "UPDATE object_types SET sort_order = ? WHERE id = ?",
+        [i + 1, ids[i]],
+      );
+      if (result.affectedRows === 0) {
+        throw new AppError("Type d'objet introuvable.", 404);
+      }
+    }
+    await conn.commit();
+  } catch (error: any) {
+    await conn.rollback().catch(() => {});
+    if (error instanceof AppError) throw error;
+    throw handleDatabaseError(error);
+  } finally {
+    conn.release();
+  }
+};
+
 export const updateType = async (
   id: number,
   data: { name?: string; sort_order?: number },
