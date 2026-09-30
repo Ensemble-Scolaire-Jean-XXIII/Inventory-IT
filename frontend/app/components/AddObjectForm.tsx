@@ -3,23 +3,29 @@
 import { useState, useEffect } from "react";
 import { ObjectType, CreateObjectPayload } from "../types/models";
 import FieldInput from "./FieldInput";
+import { useFormPersistence } from "../hooks/useFormPersistence";
 
 interface AddObjectFormProps {
   type: ObjectType;
   onAdd: (payload: CreateObjectPayload) => Promise<boolean>;
 }
 
+interface FormValues {
+  name: string;
+  values: Record<string, unknown>;
+  count: number;
+}
+
+const initialFormValues: FormValues = { name: "", values: {}, count: 1 };
+
 export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
-  const [name, setName] = useState("");
-  const [values, setValues] = useState<Record<string, unknown>>({});
-  const [count, setCount] = useState(1);
+  const [formValues, setFormValues, clearForm] = useFormPersistence<FormValues>(
+    `addObject_${type.id}`,
+    initialFormValues,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    setName("");
-    setValues({});
-    setCount(1);
-  }, [type]);
+  const { name, values, count } = formValues;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +44,7 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
     });
     setIsSubmitting(false);
     if (ok) {
-      setName("");
-      setValues({});
-      setCount(1);
+      clearForm();
     }
   };
 
@@ -57,7 +61,7 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
           type="text"
           className="crm-input"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setFormValues({ name: e.target.value })}
           placeholder="Nom de l'objet"
           required
         />
@@ -71,7 +75,7 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
           type="number"
           className="crm-input"
           value={count}
-          onChange={(e) => setCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+          onChange={(e) => setFormValues({ count: Math.max(1, Math.min(100, Number(e.target.value) || 1)) })}
           min="1"
           max="100"
           placeholder="1"
@@ -88,7 +92,7 @@ export default function AddObjectForm({ type, onAdd }: AddObjectFormProps) {
             field={field}
             value={values[field.field_key]}
             onChange={(value) =>
-              setValues((prev) => ({ ...prev, [field.field_key]: value }))
+              setFormValues({ values: { ...values, [field.field_key]: value } })
             }
             required={field.is_required}
           />

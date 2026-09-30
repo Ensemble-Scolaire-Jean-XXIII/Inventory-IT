@@ -13,6 +13,7 @@ import { fieldService } from "../services/fieldService";
 import { uniqueKey } from "../lib/format";
 import { useToast } from "../contexts/ToastContext";
 import { useUndo } from "../hooks/useUndo";
+import { useFormPersistence } from "../hooks/useFormPersistence";
 
 const INPUT_TYPE_LABELS: Record<FieldInputType, string> = {
   text: "Texte",
@@ -45,17 +46,24 @@ export default function FieldEditor({
     }
   >({});
 
-  const [newField, setNewField] = useState<{
+  interface NewFieldForm {
     label: string;
     input_type: FieldInputType;
     optionsText: string;
     is_required: boolean;
-  }>({
+  }
+
+  const initialNewField: NewFieldForm = {
     label: "",
     input_type: "text",
     optionsText: "",
     is_required: false,
-  });
+  };
+
+  const [newField, setNewField, clearNewField] = useFormPersistence<NewFieldForm>(
+    `addField_${type.id}`,
+    initialNewField,
+  );
 
   useEffect(() => {
     setFields(type.fields);
@@ -116,12 +124,7 @@ export default function FieldEditor({
         sort_order: fields.length + 1,
       });
       notify(true, "Champ ajouté.", "");
-      setNewField({
-        label: "",
-        input_type: "text",
-        optionsText: "",
-        is_required: false,
-      });
+      clearNewField();
       await onChanged();
     } catch (err) {
       notify(false, "", err instanceof Error ? err.message : "Erreur.");
