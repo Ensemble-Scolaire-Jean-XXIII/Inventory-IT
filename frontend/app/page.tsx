@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { CreateObjectPayload } from "./types/models";
 import { useInventory } from "./hooks/useInventory";
 import { useToast } from "./contexts/ToastContext";
@@ -51,8 +52,7 @@ export default function HomePage() {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort(
-            (a, b) =>
-              a.boundingClientRect.top - b.boundingClientRect.top,
+            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
           )[0] as IntersectionObserverEntry | undefined;
         if (visible) {
           const id = Number((visible.target as HTMLElement).dataset.typeId);
@@ -128,8 +128,7 @@ export default function HomePage() {
             const count = (inventory.objectsByType[type.id] || []).length;
             const isActive = activeTypeId === type.id;
             const isFirst =
-              activeTypeId === null &&
-              type.id === inventory.types[0].id;
+              activeTypeId === null && type.id === inventory.types[0].id;
             return (
               <button
                 key={type.id}
@@ -187,7 +186,7 @@ function PanelSkeleton() {
         </div>
       </div>
       <div className="flex flex-col desktop:flex-row gap-3 min-h-0">
-        <div className="flex-1 min-w-0 crm-card p-0 overflow-hidden flex h-[30rem]">
+        <div className="flex-1 min-w-0 crm-card p-0 overflow-hidden flex h-120">
           <table className="w-full text-left border-separate border-spacing-0 text-sm table-fixed">
             <thead>
               <tr>
@@ -207,7 +206,7 @@ function PanelSkeleton() {
             </tbody>
           </table>
         </div>
-        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden h-[30rem]">
+        <div className="shrink-0 desktop:w-85 crm-card p-0 overflow-hidden h-120">
           <div className="px-4 pt-3 pb-2 border-b border-(--border-color) space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-48" />
