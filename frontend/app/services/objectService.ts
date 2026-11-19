@@ -3,6 +3,8 @@ import {
   InventoryObject,
   CreateObjectPayload,
   UpdateObjectPayload,
+  ImportObjectRowPayload,
+  ImportObjectsResult,
 } from "../types/models";
 
 export const objectService = {
@@ -11,6 +13,12 @@ export const objectService = {
   },
   create: async (data: CreateObjectPayload): Promise<{ id: number; count: number }> => {
     return api.post("/objects", data);
+  },
+  importRows: async (
+    object_type_id: number,
+    rows: ImportObjectRowPayload[],
+  ): Promise<ImportObjectsResult> => {
+    return api.post("/objects/import", { object_type_id, rows });
   },
   update: async (
     id: number,

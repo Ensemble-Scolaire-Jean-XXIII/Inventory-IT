@@ -58,3 +58,23 @@ export interface UpdateObjectPayload {
   name?: string;
   data?: Record<string, unknown>;
 }
+
+export interface ImportObjectRow {
+  name: string;
+  data?: Record<string, unknown>;
+}
+
+export interface ImportObjectsPayload {
+  object_type_id: number;
+  rows: ImportObjectRow[];
+}
+
+export interface ImportRowError {
+  row: number;
+  error: string;
+}
+
+export interface ImportObjectsResult {
+  count: number;
+  errors: ImportRowError[];
+}

@@ -69,6 +69,16 @@ export interface UpdateObjectPayload {
   data?: Record<string, unknown>;
 }
 
+export interface ImportObjectRowPayload {
+  name: string;
+  data: Record<string, unknown>;
+}
+
+export interface ImportObjectsResult {
+  count: number;
+  errors: Array<{ row: number; error: string }>;
+}
+
 export interface Column<T> {
   field: string;
   label: string;

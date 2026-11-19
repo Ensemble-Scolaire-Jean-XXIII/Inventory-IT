@@ -7,6 +7,8 @@ import {
   InventoryObject,
   CreateObjectPayload,
   UpdateObjectPayload,
+  ImportObjectRowPayload,
+  ImportObjectsResult,
 } from "../types/models";
 
 export function useInventory() {
@@ -63,6 +65,18 @@ export function useInventory() {
           error: err instanceof Error ? err.message : "Erreur de création",
         };
       }
+    },
+    [load],
+  );
+
+  const importObjects = useCallback(
+    async (
+      objectTypeId: number,
+      rows: ImportObjectRowPayload[],
+    ): Promise<ImportObjectsResult> => {
+      const result = await objectService.importRows(objectTypeId, rows);
+      if (result.count > 0) await load();
+      return result;
     },
     [load],
   );
@@ -176,6 +190,7 @@ export function useInventory() {
     setError,
     load,
     addObject,
+    importObjects,
     updateObject,
     deleteObject,
     updateObjectWithUndo,

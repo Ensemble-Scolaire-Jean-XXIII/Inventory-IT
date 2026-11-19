@@ -70,8 +70,9 @@ erDiagram
 
 - `objects.data` est un JSON libre validé côté backend contre le gabarit du type
   (`object_fields`) : clés inconnues rejetées, format validé par `input_type`
-  (`text`, `number`, `date`, `mac`, `ip`, `select`, `boolean`) et champs
-  obligatoires (`is_required`) contrôlés.
+  (`text`, `number`, `date`, `mac`, `ip`, `select`, `boolean`), champs
+  obligatoires (`is_required`) contrôlés et valeurs `select` vérifiées contre
+  les `options` du champ (import CSV inclus).
 - `init.sql` fournit le schéma + le seed des 6 types : Switch, Écran, Serveur,
   Ordinateur, Clavier, Souris. Les tables `object_types` / `object_fields` sont
   déclarées avec un `AUTO_INCREMENT` de départ (7 et 36) : les champs du seed
@@ -103,6 +104,7 @@ Toutes les routes sauf `/api/auth/login` exigent le header
 | DELETE  | `/api/fields/:id`         | Supprime un champ                            |
 | GET     | `/api/objects?typeId=`    | Tous les objets (filtrés par type si fourni) |
 | POST    | `/api/objects`            | Crée un objet (`object_type_id`, `name`, `data`) |
+| POST    | `/api/objects/import`     | Import CSV en lot (`object_type_id`, `rows`) → `{ count, errors }` |
 | PUT     | `/api/objects/:id`        | Modifie `name` / `data`                      |
 | DELETE  | `/api/objects/:id`        | Supprime un objet                            |
 
@@ -144,7 +146,9 @@ flowchart LR
 - **`/`** — inventaire : un panneau par type (DataTable + graphiques SVG maison
   réactifs à la recherche), barre d'onglets fixe hors du conteneur de scroll,
   en-têtes de colonnes sticky dans chaque DataTable, rechargement au focus,
-  édition inline (récupération du champ MAC via le double-clic). La modification
+  boutons « Importer CSV » / « Exporter le modèle » à côté d'« Ajouter un objet »
+  (voir `docs/csv-import-export.md`), édition inline (récupération du champ MAC
+  via le double-clic). La modification
   et la suppression d'un objet sont **optimistes** : appliquées à l'écran puis
   persistées après 3 s, avec toast « Annuler » (temps de rétractation). Les
   DataTables et les encarts statistiques ont une **hauteur fixe commune**
@@ -189,7 +193,13 @@ flowchart LR
 
 - `useInventory` charge `types` + `objects` et expose les opérations CRUD
   (création immédiate ; modification/suppression **optimistes**) avec
-  rechargement après persistance.
+  rechargement après persistance. `importObjects` envoie les lignes validées à
+  `POST /api/objects/import` puis recharge l'inventaire si au moins une ligne a
+  été créée.
+- `ImportCsvModal` (`components/ImportCsvModal.tsx`) : sélection du fichier,
+  aperçu des 5 premières lignes, rappel des clés / champs requis / options du
+  gabarit, et liste des lignes rejetées avec leur numéro. L'import est
+  **partiel** : les lignes valides sont créées, les autres sont signalées.
 - `useUndo` : machine d'annulation partagée (snapshot, mutation optimiste,
   persistance différée 3 s, rollback au clic « Annuler » ou en cas d'échec API).
   Le toast d'annulation reprend le design du CRM Jean-XXIII : fond `bg-(--bg-card)`,
@@ -248,3 +258,6 @@ flowchart LR
   TS du build (`next build`) reste actif et passe.
 - Un seul rôle : tout compte authentifié a accès à tout ; identifiants = e-mail
   unique + mot de passe (colonne `username` supprimée de `users`).
+- Import CSV : 500 lignes maximum par envoi et corps JSON limité à 2 Mo ; le
+  modèle exporté contient les clés (`name` + `field_key`) et une ligne d'exemple
+  valide à remplacer. Détails dans `docs/csv-import-export.md`.

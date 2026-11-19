@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CreateObjectPayload } from "./types/models";
+import {
+  CreateObjectPayload,
+  ImportObjectRowPayload,
+  ImportObjectsResult,
+} from "./types/models";
 import { useInventory } from "./hooks/useInventory";
 import { useToast } from "./contexts/ToastContext";
 import TypePanel from "./components/TypePanel";
@@ -90,6 +94,20 @@ export default function HomePage() {
     return false;
   };
 
+  const handleImport = async (
+    objectTypeId: number,
+    rows: ImportObjectRowPayload[],
+  ): Promise<ImportObjectsResult> => {
+    const result = await inventory.importObjects(objectTypeId, rows);
+    if (result.count > 0) {
+      showToast(
+        `${result.count} objet${result.count > 1 ? "s" : ""} importé${result.count > 1 ? "s" : ""}.`,
+        "success",
+      );
+    }
+    return result;
+  };
+
   const handleUpdate = async (
     id: number,
     payload: { name?: string; data?: Record<string, unknown> },
@@ -165,6 +183,7 @@ export default function HomePage() {
             rows={inventory.objectsByType[type.id] || []}
             isLoading={inventory.isLoading}
             onAdd={handleAdd}
+            onImport={handleImport}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
           />

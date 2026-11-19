@@ -15,6 +15,19 @@ export const displayValue = (value: unknown): string => {
   return String(value);
 };
 
+export const parseFieldOptions = (options: unknown): string[] => {
+  if (Array.isArray(options)) return options.map(String);
+  if (typeof options === "string") {
+    try {
+      const parsed: unknown = JSON.parse(options);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const slugifyKey = (label: string): string => {
   const base = label
     .normalize("NFD")
