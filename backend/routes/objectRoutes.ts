@@ -22,6 +22,39 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.post("/import", async (req, res, next) => {
+  try {
+    const body = req.body as {
+      object_type_id?: number;
+      rows?: Array<{ name?: string; data?: Record<string, unknown> }>;
+    };
+    if (!body.object_type_id || !Array.isArray(body.rows)) {
+      return res
+        .status(400)
+        .json({ error: "Le type et les lignes à importer sont requis." });
+    }
+    if (body.rows.length === 0) {
+      return res.status(400).json({ error: "Aucune ligne à importer." });
+    }
+    if (body.rows.length > 500) {
+      return res.status(400).json({ error: "Import limité à 500 lignes." });
+    }
+    const result = await objectService.importObjects({
+      object_type_id: Number(body.object_type_id),
+      rows: body.rows.map((row) => ({
+        name: typeof row?.name === "string" ? row.name : "",
+        data:
+          row?.data && typeof row.data === "object" && !Array.isArray(row.data)
+            ? row.data
+            : {},
+      })),
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/", async (req, res, next) => {
   try {
     const body = req.body as {

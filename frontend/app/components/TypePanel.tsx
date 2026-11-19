@@ -6,21 +6,29 @@ import {
   ObjectType,
   InventoryObject,
   CreateObjectPayload,
+  ImportObjectRowPayload,
+  ImportObjectsResult,
   Column,
 } from "../types/models";
 import DataTable from "./DataTable";
 import FieldInput from "./FieldInput";
 import AddObjectForm from "./AddObjectForm";
+import ImportCsvModal from "./ImportCsvModal";
 import ChartsPanel from "./ChartsPanel";
 import { useSearch } from "../hooks/useSearch";
 import { useSort } from "../hooks/useSort";
-import { displayValue } from "../lib/format";
+import { displayValue, slugifyKey } from "../lib/format";
+import { buildTemplateCsv, downloadCsv } from "../lib/csv";
 
 interface TypePanelProps {
   type: ObjectType;
   rows: InventoryObject[];
   isLoading?: boolean;
   onAdd: (payload: CreateObjectPayload) => Promise<boolean>;
+  onImport: (
+    objectTypeId: number,
+    rows: ImportObjectRowPayload[],
+  ) => Promise<ImportObjectsResult>;
   onUpdate: (
     id: number,
     payload: { name?: string; data?: Record<string, unknown> },
@@ -38,10 +46,12 @@ export default function TypePanel({
   rows,
   isLoading = false,
   onAdd,
+  onImport,
   onUpdate,
   onDelete,
 }: TypePanelProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editForm, setEditForm] = useState<Partial<InventoryObject>>({});
 
@@ -99,6 +109,13 @@ export default function TypePanel({
     await onDelete(Number(id));
   };
 
+  const handleExportTemplate = () => {
+    downloadCsv(
+      `${slugifyKey(type.name)}_modele.csv`,
+      buildTemplateCsv(type),
+    );
+  };
+
   const columns: Column<InventoryObject>[] = [
     {
       field: "name",
@@ -153,6 +170,22 @@ export default function TypePanel({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            title="Importer des objets depuis un fichier CSV"
+            className="crm-btn-ghost text-xs"
+          >
+            Importer CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleExportTemplate}
+            title="Télécharger le modèle CSV (clés uniquement)"
+            className="crm-btn-ghost text-xs"
+          >
+            Exporter le modèle
+          </button>
+          <button
             onClick={() => setShowForm((v) => !v)}
             className={
               showForm ? "crm-btn-primary text-xs" : "crm-btn-ghost text-xs"
@@ -175,6 +208,14 @@ export default function TypePanel({
         <div className="crm-card p-4">
           <AddObjectForm type={type} onAdd={onAdd} />
         </div>
+      )}
+
+      {showImport && (
+        <ImportCsvModal
+          type={type}
+          onClose={() => setShowImport(false)}
+          onImport={onImport}
+        />
       )}
 
       <div className="flex flex-col desktop:flex-row gap-3 min-h-0 desktop:flex-1">

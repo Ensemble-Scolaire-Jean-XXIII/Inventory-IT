@@ -4,6 +4,9 @@ import {
   ObjectField,
   CreateObjectPayload,
   UpdateObjectPayload,
+  ImportObjectsPayload,
+  ImportObjectsResult,
+  ImportRowError,
 } from "../models/types";
 import { AppError, handleDatabaseError } from "../utils/appError";
 import { validateFieldValue } from "../utils/validators";
@@ -75,6 +78,63 @@ const normalizeCount = (value: number | undefined): number => {
   return Math.min(Math.max(n, 1), 100);
 };
 
+export const importObjects = async (
+  payload: ImportObjectsPayload,
+): Promise<ImportObjectsResult> => {
+  const fields = await getFieldsByTypeId(payload.object_type_id);
+  if (fields.length === 0) {
+    throw new AppError(
+      "Ce type d'objet ne possède aucun gabarit de champ.",
+      400,
+    );
+  }
+
+  const errors: ImportRowError[] = [];
+  const prepared: Array<{ name: string; data: Record<string, unknown> }> = [];
+
+  for (let index = 0; index < payload.rows.length; index++) {
+    const row = payload.rows[index];
+    const name = typeof row.name === "string" ? row.name.trim() : "";
+    if (!name) {
+      errors.push({ row: index + 1, error: "Le nom de l'objet est requis." });
+      continue;
+    }
+    try {
+      const data = await cleanData(fields, row.data || {});
+      prepared.push({ name, data });
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        errors.push({ row: index + 1, error: error.message });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  if (prepared.length === 0) {
+    return { count: 0, errors };
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (const item of prepared) {
+      await conn.query(
+        "INSERT INTO objects (object_type_id, name, data) VALUES (?, ?, ?)",
+        [payload.object_type_id, item.name, JSON.stringify(item.data)],
+      );
+    }
+    await conn.commit();
+  } catch (error: any) {
+    await conn.rollback().catch(() => {});
+    throw handleDatabaseError(error);
+  } finally {
+    conn.release();
+  }
+
+  return { count: prepared.length, errors };
+};
+
 export const updateObject = async (
   id: number,
   payload: UpdateObjectPayload,
@@ -123,6 +183,19 @@ export const deleteObject = async (id: number): Promise<void> => {
   }
 };
 
+const parseOptions = (options: unknown): string[] => {
+  if (Array.isArray(options)) return options.map(String);
+  if (typeof options === "string") {
+    try {
+      const parsed: unknown = JSON.parse(options);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 const cleanData = async (
   fields: ObjectField[],
   raw: Record<string, unknown>,
@@ -159,6 +232,16 @@ const cleanData = async (
     const { error } = validateFieldValue(field.input_type, value);
     if (error) {
       throw new AppError(`Champ « ${field.label} » : ${error}`, 400);
+    }
+
+    if (field.input_type === "select") {
+      const options = parseOptions(field.options);
+      if (options.length > 0 && !options.includes(String(value))) {
+        throw new AppError(
+          `Champ « ${field.label} » : valeur non autorisée (options : ${options.join(", ")}).`,
+          400,
+        );
+      }
     }
 
     data[field.field_key] = value;
